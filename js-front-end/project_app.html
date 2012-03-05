@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html>
+<head>
+<!--	<base href="http://172.16.5.70:8080"></base> -->
+	<meta charset="UTF-8">
+	<title>title</title>
+	<!--<script type="text/javascript" src="Scripts/jquery-1.7.1.js"></script>-->
+	<script type="text/javascript" src="scripts/right-src.js"></script>
+	<script type="text/javascript" src="scripts/right-resizable.js"></script>
+	<script type="text/javascript" src="scripts/right-selectable.js"></script>
+	<script type="text/javascript" src="scripts/right-dialog.js"></script>
+	<script type="text/javascript" src="scripts/right-calendar.js"></script>
+	<script type="text/javascript" src="scripts/ru.js"></script>
+	<script type="text/javascript" src="scripts/project_app_binding.js"></script>
+	<script type="text/javascript" src="scripts/project_lib.js"></script>
+	<script type="text/javascript" src="scripts/project_app.js"></script>
+	<link href="layout.css" type="text/css" rel="stylesheet" />	
+</head>
+<body>
+	<div id="left-block" class="layout ">
+			<div id="user-block" class="layout">
+<!--Данные пользователя-->
+				<div id="user-data" style="display:none">
+					<span id="user-data-name"></span>
+					<img id="user-data-image" width="40px" height="40px"></img>
+					<div id="user-data-descr"></div>
+				</div>
+				<div id="user-login" >
+					<form method="POST" >
+						<div class="field"><span class="label">email:</span>
+							<input type="email" name="user_id"></input>
+						</div>
+						<input type="submit" value="Login"></input>
+					</form>				
+				</div>
+				<div id="participant-me">
+					<div class="name"></div>
+					<div class="panel"></div>
+				</div> 
+			</div>
+<!--Список контента-->		
+			<div id="left-container" class="layout" >
+
+			</div>
+<!--Панель участников-->
+			<div id="left-footer" class="footer layout">
+			</div>
+	</div>
+<!--Навигация-->
+	<div id="right-block" class="layout">
+<!--Навигационная панель-->
+		<div id="nav-panels">
+		</div>
+<!--Панель инструментов-->
+		<div id="tool-panels">
+		</div>
+
+	</div>
+
+<!--Тело-->
+	<div id="content-block" class="layout">
+<!--описательная часть-->
+		<h3 id="content-title">title</h3>
+		<p id="content-description">some description here</p>
+		<div id="content-container"></div>
+
+	</div>
+
+
+<!--Шаблон Нав панели-->
+		<div id="nav-panel-template" class="nav-panel" style="display:none">
+			<span class="button">btn1</span>
+			<span class="title"></span>
+			<span class="button">btn2</span>
+		</div>
+<!--Шаблон контейнера формы-->	
+	<div id="form-holder-template" class="holder form-holder" style="display:none">
+		<div class="title">title</div>
+		<div class="content"></div>		
+		<div class="handle">
+			<span class="button">V</span>
+			<span class="button">C</span>
+			<span class="button">X</span>
+		</div>		
+	</div>
+<!--Шаблон контейнера постраничного списка-->	
+	<div id="plist-holder-template" class="holder list-holder" style="display:none">
+		<div class="title">title</div>
+		<div class="content" ></div>
+		<div class="handle">
+			<span class="button refresh">O</span>
+			<span class="button setup" >S</span>
+			<span class="button close" >X</span>
+		</div>
+		<div class="pager">
+			<span class="button prev">&lt</span>
+			<span class="page-num">1</span>
+			<span class="button next">&gt</span>
+		</div>		
+	</div>
+
+<!--Шаблон контейнера списка-->	
+	<div id="list-holder-template" class="holder list-holder" style="display:none">
+		<div class="title">title</div>
+		<div class="content"></div>
+		<div class="handle"></div>
+	</div>
+	
+<!--Шаблон формы создания проекта-->
+		<div id="new-project-template" style="display:none">
+			<form method="POST" >
+				<div class="field"><span class="label">Название:</span>
+					<input type="text" name="name"></input>
+				</div>
+				<div class="field"><span class="label">Описание:</span>
+					<input type="text" name="descr"></input>
+				</div>
+				<div class="field"><span class="label">Дата начала:</span>
+					<input type="date" name="begin_date" data-calendar="{format: 'ISO'}"></input>
+				</div>
+				<div class="field"><span class="label">Открытость:</span>
+					<select name="sharing">
+						<option value="close" selected="selected" >Закрытый</option>
+						<option value="invitation">По приглашениям</option>
+						<option value="open">Открытый</option>
+					</select>
+				</div>
+				<input type="hidden" name="ruleset" value="despot"></input>
+				<input type="hidden" name="user_id"></input>
+				<div class="field">
+					<span class="label">Имя на проекте:</span><input type="text" name="user_name"></input>
+				</div>
+				<div class="field">
+					<span class="label">О себе:</span><input type="text" name="user_descr"></input>
+				</div>
+			</form>
+		</div>
+
+<!--Шаблон формы входа на открытый проект-->
+		<div id="enter-project-template" style="display:none">
+			<form method="POST" >
+				<input type="hidden" name="uuid"></input>
+				<input type="hidden" name="user_id"></input>
+				<div class="field">
+					<span class="label">Имя на проекте:</span><input type="text" name="name"></input>
+				</div>
+				<div class="field">
+					<span class="label">О себе:</span><input type="text" name="descr"></input>
+				</div>
+			</form>
+		</div>
+
+<!--Шаблон формы пригашения на проект-->
+		<div id="invite-participant-template" style="display:none">
+			<form method="POST" >
+				<input type="hidden" name="psid"></input>
+				<div class="field">
+					<span class="label">учетка:</span><input type="email" name="user_id"></input>
+				</div>
+				<div class="field">
+					<span class="label">Имя на проекте:</span><input type="text" name="name"></input>
+				</div>
+				<div class="field">
+					<span class="label">Детали:</span><input type="text" name="descr"></input>
+				</div>
+				<div class="field">
+					<span class="label">Коментарии:</span><input type="text" name="comment"></input>
+				</div>
+			</form>
+		</div>
+
+<!--Шаблон формы запроса токена-->
+		<div id="project-by-token-template" style="display:none">
+			<form method="POST" >
+				<div class="field"><span class="label">Пригашение:</span>
+					<input type="text" name="token"></input>
+				</div>
+			</form>
+		</div>
+<!--Шаблон  статуса и параметров проекта-->
+		<div id="project-adm-template" style="display:none">
+			<div class="adm-status"><input type="hidden"></input></div>
+			<div class="adm-params"></div>
+		</div>
+<!--Шаблон инфо участника-->
+		<div id="participant-template" style="display:none">
+			<div class="title"></div>
+			<div class="tool-panel"></div>
+		</div>		
+
+<!--Шаблон формы обновления данных участника-->
+		<div id="edit-participant-template" style="display:none">
+			<form method="POST" >
+				<input type="hidden" name="psid"></input>
+				<input type="hidden" name="uuid"></input>
+				<div class="field">
+					<span class="label">Имя на проекте:</span><input type="text" name="name"></input>
+				</div>
+				<div class="field">
+					<span class="label">О себе:</span><input type="text" name="descr"></input>
+				</div>
+				<input type="hidden" name="user_id"></input>
+			</form>
+		</div>
+	
+</body>
+</html>

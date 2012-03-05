@@ -1,0 +1,204 @@
+/* Общие */
+body {
+	background: #800000;
+/*	margin-left: 200px;
+	margin-top: 150px; */
+	font-size: small;
+	min-height: 22em;
+}
+
+input {
+
+}
+label {
+	display: block;	
+}
+
+.layout {
+	overflow: auto;
+}
+.hidden {
+	display: none;	
+}
+.content {
+
+}
+.button {
+	cursor: pointer;
+	padding: 1px;
+}
+.title {
+	font-style: oblique;
+
+}
+/* Левое поле */
+#left-block {
+	position: fixed;
+	width: 14em;
+	left: 0;
+	top: 0;	
+	bottom: 0;
+	background: #C05000;
+	margin: 2px;
+	min-height: 22em;
+}
+/* Блок работы с пользователем */
+#user-block {
+	height: 9em; 
+	width:  100%;
+/*	border-bottom: medium dotted black; */  	
+}
+#user-data {
+}
+#user-data-name {
+	font-weight: bold;
+}
+
+#user-data img {
+	float:  left;
+}
+
+#participant-me {
+	position: absolute;
+	width: 92%;
+	top: 6em;
+	height: 2.8em;
+	border-top: medium dotted black;	
+	border-bottom: thin solid black;
+}
+
+/* контент левого блока*/
+#left-container {
+	position:absolute;
+	top:9em;
+	bottom:5em;
+	width:90%;
+}
+.footer {
+	position: fixed;
+	bottom: 0;
+	height: 5em;
+}
+#left-footer{
+	width: 13em;
+	border-top: medium dotted black;
+}
+
+
+/* Правое проле */
+#right-block {
+	position: fixed;
+	left: 15em;
+	right: 0;
+	top: 0;
+}
+.nav-panel {
+	border: thin solid navy;
+	border-radius: 6px;
+}
+.nav-panel .title {
+	cursor: pointer;
+}
+.nav-panel-selector {
+	display: block;
+	position: fixed;
+	z-index: 2;
+	background: #800000;	
+}
+
+.tool-panel {
+	border-bottom: thin solid black;
+}
+/* поле контента */
+#content-block {
+	position: fixed;
+	left: 15em;
+	right: 0;
+	top: 150px;
+	bottom: 0;
+}
+
+/*content holders*/
+.form-holder {
+	width: 90%;
+	margin-left: 2em;
+	padding-bottom: 1.4em;
+}
+.form-holder .handle {
+	float: left;
+}
+.form-holder .title {
+	text-align: right;
+}
+.form-holder .content {
+	border-top: thin solid;
+}
+.field{
+	width: 100%;	
+}
+.label{
+	display: inline-block;
+	width: 30%;
+	text-align: right;
+}
+
+
+
+.list-holder {
+	width: 90%;
+	margin-left: 2em;
+	position: relative;
+	padding-bottom: 1.4em;
+}
+.list-holder .title {
+	text-align: right;
+}
+.list-holder .content {
+	border-top: thin solid;
+/*	position: absolute;*/
+	top: 1.4em;
+	left: 0.1em;
+	right: 0;
+	bottom: 1.4em;
+	overflow-y: scroll;
+	max-height: 14em;
+}
+.list-holder .handle {
+	position: absolute; 
+	bottom: 0.1em;
+	left: 0.1em;
+}
+.list-holder .pager{
+	position: absolute;
+	bottom: 0.1em;
+	right: 1em;
+}
+
+
+
+.row{
+	display: block;
+	cursor: pointer;
+}
+.cell{
+	padding-left: 1px;
+	padding-right: 1px;
+	display:	inline-block;
+	overflow: hidden;
+}
+
+.row .name{
+	width: 30%;
+}
+.row .descr{
+	width: 40%;
+}
+.row .role{
+	width: 10%;
+}
+.row .status{
+	width: 10%;
+}
+
+
+/*rui-resizable alterations*/ 
