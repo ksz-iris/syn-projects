@@ -136,6 +136,25 @@
 			</form>
 		</div>
 
+<!--Шаблон формы создания проекта-->
+		<div id="new-activity-template" style="display:none">
+			<form method="POST" >
+				<input type="hidden" name="psid" value="despot"></input>
+				<div class="field"><span class="label">Название:</span>
+					<input type="text" name="name"></input>
+				</div>
+				<div class="field"><span class="label">Описание:</span>
+					<input type="text" name="descr"></input>
+				</div>
+				<div class="field"><span class="label">Начало:</span>
+					<input type="date" name="begin" data-calendar="{format: 'ISO'}"></input>
+				</div>
+				<div class="field"><span class="label">Окончание:</span>
+					<input type="date" name="end" data-calendar="{format: 'ISO'}"></input>
+				</div>
+			</form>
+		</div>
+
 <!--Шаблон формы входа на открытый проект-->
 		<div id="enter-project-template" style="display:none">
 			<form method="POST" >

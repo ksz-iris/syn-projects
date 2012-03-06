@@ -220,37 +220,3 @@ function makeToolPanel(wp, toolItems) {
 }
 //===========================================
 
-//Обновление списка проектов пользователя
-//container - контейнер для вывода, 
-//svc - данные сервиса
-function refreshProjectList(container, svc, id) {
-	collectProjectList([crnt(svc).userId], []
-		,function(list){
-			fillList(
-				container //контейнер
-				,list     //массив
-				//функция формирования элементов отображения данных проекта
-				,function(item,i){
-					var rowClass = "row"; var role = "участник";
-					if (item.data.initiator) {
-						rowClass += " initiator";
-						role += " инициатор";
-					}
-					//формирование строк списка
-					return $E('div',{class:rowClass})
-						.append($E('span',{class:"cell name"}).text(item.data.name))
-						.append($E('span',{class:"cell descr"}).text(item.data.descr))
-						.append($E('span',{class:"cell role"}).text(role))
-						.append($E('span',{class:"cell status"}).text(item.data.status))
-						.onClick(
-							function(evt){
-								//обработка клика на записи проета
-								enterProject({parent:svc, list:list,i:-1}, i);
-							}
-						);
-				}
-			)
-
-		} 
-	)
-}
