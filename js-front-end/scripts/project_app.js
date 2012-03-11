@@ -40,7 +40,7 @@ function newProject(svc, cbCancel){
 			} 
 			//обработка закрытияформы
 			,function(){
-				displayService(svc);
+				displayService(svc,svc.i);
 			}
 		)
 	);
@@ -91,7 +91,7 @@ function enterOpenProject(svc, idProject){
 			} 
 			//обработка закрытияформы
 			,function(){
-				displayService(svc);
+				displayService(svc, svc.i);
 			}
 		)
 	);
@@ -500,7 +500,7 @@ function refreshActList(container, prj) {
 								.onClick(
 									function(evt){
 										//обработка клика на записи проета
-										displayActivity({parent:prj, list:list,i:-1}, i);
+										displayActivity({cbDisplay:displayActivity, cbClose: parent:prj, list:list,i:-1}, i);
 									}
 								);
 					}
@@ -548,7 +548,7 @@ function newActivity(prj, cbCancel){
 			} 
 			//обработка закрытияформы
 			,function(){
-				displayService(svc);
+				displayProject(prj, prj.i);
 			}
 		)
 	);
@@ -607,7 +607,7 @@ function displayProject(prj, i){
 				parent : prj.parent
 				,cbDisplay : enterProject
 				,cbClose : function(){alert("close project")}
-				,list : list
+				,list : function(){return list}
 				
 			} 
 			list.each(
@@ -737,6 +737,7 @@ function newResource(act, cbCancel){
 	alert("new resource");	
 }
 
+
 function displayActivity(act, i) {
 	act.i = i;
 	cbDisplay = displayActivity;
@@ -801,13 +802,15 @@ $('left-block').first('.rui-resizable-content')._.style.height="96%";
 
 
 var svc = {
-	list:[
-		{id:"gamma",data:{uuid:"gamma",name:"Собутыльники",descr:"Пьянки, гулянки",domain:"http:172.16.5.83:8080"}, psid:{}, tokens:[]}
-		,{id:"beta",data:{uuid:"beta", name:"Оптовики",descr:"Оптовые заказы",domain:"http:172.16.5.83:8080"}, psid:{}, tokens:[]}
-	]
+	list:function(){
+			return [
+				{id:"gamma",data:{uuid:"gamma",name:"Собутыльники",descr:"Пьянки, гулянки",domain:"http:172.16.5.83:8080"}, psid:{}, tokens:[]}
+				,{id:"beta",data:{uuid:"beta", name:"Оптовики",descr:"Оптовые заказы",domain:"http:172.16.5.83:8080"}, psid:{}, tokens:[]}
+			];
+		}
 	,i:0
 };
-svc.prj = {parent:svc, list:[], i:0};
+//svc.prj = {parent:svc, list:[], i:0};
 
 displayService(svc, 0);
 

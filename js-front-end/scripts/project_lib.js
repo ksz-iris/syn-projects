@@ -1,3 +1,43 @@
+//Классы
+//Проекты
+var Prj = new Class(
+{
+	initialize: function(svc){
+			this.parent = svc
+		}
+	,list: function(continuation){
+ 			var tokens = [];
+ 			if (defined(this.parent.userId)) {tokens.push(this.parent.userId)}
+		 	tokens = tokens.concat(this.parent.tokens);
+			this.collectList(tokens, [], )
+		}  
+	,collectList:function (tokens, list, continuation) {
+		if (tokens.length > 0) {
+			aget('/project/list/userid', {user_id:tokens.shift()}
+					,function(res){
+						collectProjectList(
+							tokens
+							,list.concat(res.map(function(item, i){return {id:item.uuid,data:item}}))
+							,continuation 
+					);
+					}
+			);
+		} else {
+			continuation(list);
+		}
+	}
+});
+//Мероприятия
+var Act = new Class(
+{
+	initialize: function(prj, list, i){
+
+		}	
+});
+
+
+//Функции 
+
 //подгонка размеров областей...
 function resize(){
 	var e = $('left-block').first('.rui-resizable-handle');
@@ -131,7 +171,7 @@ function fillList(container, list, lineComposer){
 //displayCB - функция обработки выбора
 function makeSelector(wp) {
 	return new Selectable({
-		options: selOpt(wp.list,"name"),
+		options: selOpt(wp.list(),"name"),
 		selected: wp.i,
 	}).hide()
 		.addClass("nav-panel-selector")
@@ -158,10 +198,14 @@ function makeNavPanel(wp) {
 	var nav = $('nav-panel-template').clone().show();
 	//обработка заголовка
 	var ttl = nav.first('.title').text(wp.list[wp.i].data.name)
-		.on('click', function(){wp.cbDisplay(wp, wp.i)}); //заголовок 
+		.on('click', function(){
+				wp.cbDisplay(wp, wp.i)
+			}); //заголовок 
 	//кнопки 
 	var btns = nav.find('.button');
-	btns[0].text("X").on('click', function(){wp.cbClose()}); //назначение обработчика на закрытие
+	btns[0].text("X").on('click', function(){
+			wp.cbClose()
+		}); //назначение обработчика на закрытие
 	//обработчикна вызовселектора
 	btns[1].text("V").on('click', function(evt){
 			makeSelector(wp)
