@@ -1,42 +1,54 @@
-//Классы
-//Проекты
-var Prj = new Class(
-{
-	initialize: function(svc){
-			this.parent = svc
-		}
-	,list: function(continuation){
- 			var tokens = [];
- 			if (defined(this.parent.userId)) {tokens.push(this.parent.userId)}
-		 	tokens = tokens.concat(this.parent.tokens);
-			this.collectList(tokens, [], )
-		}  
-	,collectList:function (tokens, list, continuation) {
-		if (tokens.length > 0) {
-			aget('/project/list/userid', {user_id:tokens.shift()}
-					,function(res){
-						collectProjectList(
-							tokens
-							,list.concat(res.map(function(item, i){return {id:item.uuid,data:item}}))
-							,continuation 
-					);
-					}
-			);
-		} else {
-			continuation(list);
-		}
-	}
-});
-//Мероприятия
-var Act = new Class(
-{
-	initialize: function(prj, list, i){
-
-		}	
-});
-
-
 //Функции 
+
+var domain;
+
+function aget(url, pars, process) {
+	new Xhr(
+		domain+url
+		,{
+			method:'post'
+			,onSuccess:function(r){process(r.responseJSON)}
+			,onFailure:function(r){alert(r.responseText)}
+		}
+	).send(pars);
+}
+
+function apost(url, _data, continuation) {
+	new Xhr(
+		domain+url
+		,{
+			method:'post'
+			,onSuccess:function(r){continuation(r.responseJSON)}
+			,onFailure:function(r){alert(r.responseText)}
+		}
+	).send(_data);
+	
+}
+
+function collectProjectList(tokens, list, continuation) {
+	if (tokens.length > 0) {
+		aget('/project/list/userid', {user_id:tokens.shift()}
+				,function(res){
+					collectProjectList(
+						tokens
+						,list.concat(res.map(function(item, i){return {id:item.uuid,data:item}}))
+						,continuation 
+				);
+				}
+		);
+	} else {
+		continuation(list);
+	}
+}
+
+//индекс эл-та массива для которого фцнкция вернет true
+function idxById(arr, id) {
+	var ret;
+	arr.each(function(item,i){
+		if (item.id == id) {ret = i; $break;}
+	});
+	return ret;
+}
 
 //подгонка размеров областей...
 function resize(){
@@ -139,9 +151,8 @@ function makeList(title, id, toolItems) {
 	//клоним шаблон рамки списка	
 	var plist = $('list-holder-template').clone().set('id',id+'holder');
 	//панель активных элементов
-	addToolItems(
-		plist.first('.handle')
-		,toolItems
+	plist.first('.handle').insert(
+		ToolItem.composeList(toolItems)
 	)
 	//заголовок
 	plist.first('.title').text(title);
@@ -150,16 +161,7 @@ function makeList(title, id, toolItems) {
 	return plist; 
 }
 
-//Наполнение списка строками на основе данных
-//container - Элмент - контейнер для списка, 
-//list - массив записей, 
-//lineComposer - функция формирования элемента строки списка
-function fillList(container, list, lineComposer){
-//получаем массив скомпонованных элементов 
-	var elements = list.map(lineComposer).filter(function(item, i){return defined(item)});
-//вставка 
-	container.clean().insert(elements);
-}
+
 //=========================================
 
 /*****************************************
@@ -169,20 +171,22 @@ function fillList(container, list, lineComposer){
 //wpList - список,
 //i - индекс текущего, 
 //displayCB - функция обработки выбора
-function makeSelector(wp) {
-	return new Selectable({
-		options: selOpt(wp.list(),"name"),
-		selected: wp.i,
-	}).hide()
+function showSelector(wp, container, position) {
+	wp.list(function(list){
+		new Selectable({
+			options: selOpt(list,"name"),
+			selected: idxById(list, wp.id) ,
+		}).hide()
 		.addClass("nav-panel-selector")
 		//обработчик выбора
 		.delegate('click', 'li', function(){
 				var j = this._value;
 				this.parent().remove();
-//				wp.list[i].nav.hide();
-				wp.cbDisplay(wp, j);
+				wp.new(list[j]).display();
 			}
-		);
+		)
+		.insertTo(container).moveTo(position).show();
+	});
 }
 //формирование навигационной панели
 //wp - данные объекта вида {current:idx,list:} 
@@ -197,20 +201,18 @@ function makeNavPanel(wp) {
 	//клон шаблона	
 	var nav = $('nav-panel-template').clone().show();
 	//обработка заголовка
-	var ttl = nav.first('.title').text(wp.list[wp.i].data.name)
+	var ttl = nav.first('.title').text(wp.data.name)
 		.on('click', function(){
-				wp.cbDisplay(wp, wp.i)
+				wp.display();
 			}); //заголовок 
 	//кнопки 
 	var btns = nav.find('.button');
 	btns[0].text("X").on('click', function(){
-			wp.cbClose()
+			wp.close()
 		}); //назначение обработчика на закрытие
 	//обработчикна вызовселектора
 	btns[1].text("V").on('click', function(evt){
-			makeSelector(wp)
-			.insertTo(nav)
-			.moveTo(ttl.position()).show();
+			showSelector(wp, nav, ttl.position());
 		});
 	chain.push(nav);
 	return chain;		
@@ -235,32 +237,101 @@ function displayNav(wp, toolItems){
 
 //*****************************************
 //генератор панели активных элементов
+ToolItem = new Class({
+	initialize: function(name, callback){
+			this.name = name;
+			this.callback = callback;
+		}
+	,compose: function() {ToolItem.compose(this);}
+});
+ToolItem.compose = function(toolItem){
+	return $E('span',{class:"button"})
+		.on('click', function(){toolItem.callback();})
+		.text(toolItem.name);
+}
+ToolItem.composeList = function(toolItems){
+	return toolItems.map(ToolItem.compose);
+}
+
 
 //стандартный композатор элемента
 //container - контейнер для элементов, 
-//item - описание элемента, должно содержать поля исользуемые в композаторе, 
+//item - описание элемента {name:<имя элемента>, callback:<обработчик активации элемента>} 
 //i - порядковый номер элемента
-function stdToolItemComposer(container, item, i){
-				container.append(
-					$E('span',{class:"button"})
-					.on('click', function(){item.callback();})
-					.text(item.name)
-				);					
-}
+//function stdToolItemComposer(item, i){
+//	return $E('span',{class:"button"})
+//		.on('click', function(){item.callback();})
+//		.text(item.name);
+//}
 //итератор композатором по списку элементов  
 //container - контейнер для элементов, 
 //toolItems - список описаний элементов, 
-//itemComposer - функция генерации элемента
-function addToolItems(container, toolItems, itemComposer) {
-		if (!defined(itemComposer)) {itemComposer=stdToolItemComposer;}
-		toolItems.each(function(item, i){itemComposer(container, item, i)});
-		return container;	
+//function makeToolItems(toolItems) {
+//	return container.insert(
+//		toolItems.map(function(item, i){item.composer(item, i)})
+//	);	
+//}
+
+//===========================================
+
+
+//Наполнение списка строками на основе данных
+//container - Элмент - контейнер для списка, 
+//list - массив записей, 
+//lineComposer - функция формирования элемента строки списка
+function fillList(container, list, lineComposer){
+//получаем массив скомпонованных элементов 
+	var elements = list.map(lineComposer).filter(function(item, i){return defined(item)});
+//вставка 
+	container.clean().insert(elements);
 }
 
-//стандартная панель кнопок...
-function makeToolPanel(wp, toolItems) {
-		wp.tool = $E('div',{class:"tool-panel"});
-		return addToolItems(wp.tool, toolItems);
+
+//Композитор набора строк таблицы
+//cols - описание колонок [{nm:<имя поля>,
+//									 cls:<значене для аттрибура class ячейки>, - необяз.
+//									 clsList:[<имя класса>]}], - необяз.
+//dtlCol - имя поля с подробностями,
+//list - список записей данных, 
+//rowClassComposer - функция возвращающая имя сласса для строки, 
+//toolItemsComposer - функция возвращающая набор активных элементов для строки, 
+function makeRowSet(cols, dtlCol, list, rowClassComposer, toolItemsComposer) {
+	//подготовка каталога колонок
+	cols.walk(function(col,i){
+		if (!defined(col.cls)) {
+			col.cls = ["cell"].merge([col.nm],col.clsList).join(" ");
+		}
+	});
+	return list.map(function(row, i){
+			return makeRow(
+				cols, dtlCol, row, i, rowClassComposer(row), toolItemsComposer(row)
+			);
+		})
 }
-//===========================================
+//Композитор строки таблицы
+//cols - массив описаний колонок [{nm:<имя поля>,
+//									 		  cls:<значене для аттрибура class ячейки>}],
+//dtlCol - имя поля с подробностями,
+//row - строка данных (структура), 
+//rowId - ид строки анных, 
+//rowClass - массив имен классов для строки таблицы, 
+//toolItems - массив активных элементов
+function makeRow(cols, dtlCol, row, rowId, rowClass, toolItems) {
+	//Формирование лементов
+	return $E("div",{
+			class:["row"].merge(rowClass).join(" ")
+			,title:row[dtlCol]
+		})
+		//верхняя часть
+		.append($E("div", {class:"fieldSet",row_id:rowId}).insert(
+			cols.map(function(col, i){
+				return $E("span",{
+							class:col.cls
+						})
+						.text(row[col.nm]);
+			})
+		))
+		//нижняя часть
+		.append($E("div").insert(ToolItem.composeList(toolItems)));
+}
 

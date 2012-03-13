@@ -187,6 +187,9 @@ label {
 	overflow: hidden;
 }
 
+.row .tool{
+	width: 10%;
+}
 .row .name{
 	width: 30%;
 }

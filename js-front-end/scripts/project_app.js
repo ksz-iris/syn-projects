@@ -15,21 +15,21 @@ function newProject(svc, cbCancel){
 			//обработка сабмита
 			,function(evt, form){
 				form.set('action',domain+"/project/create")
-				if (defined(crnt(svc).userId)) {
-					form.input("user_id").setValue(crnt(svc).userId);
+				if (defined(svc.userId)) {
+					form.input("user_id").setValue(svc.userId);
 				}
 				//отправка запроса на создание
 				form.send({
 //					async:false,
 					onSuccess:function(r){
-						crnt(svc).psid[r.responseJSON.uuid] = r.responseJSON.psid;
+						svc.psid[r.responseJSON.uuid] = r.responseJSON.psid;
 						
 						collectProjectList(
 							[r.responseJSON.token]
 							,[]
 							,function(list){
 								list[0].token = r.responseJSON.token;
-								enterProject({parent: svc, list:list, i:0}, 0);
+								new Prj(svc, list[0]).display();
 							}							
 						);
 					}
@@ -40,7 +40,7 @@ function newProject(svc, cbCancel){
 			} 
 			//обработка закрытияформы
 			,function(){
-				displayService(svc,svc.i);
+				displayService(svc);
 			}
 		)
 	);
@@ -62,25 +62,23 @@ function enterOpenProject(svc, idProject){
 			//обработка сабмита
 			,function(evt, form){
 				form.set('action',domain+"/project/enter/open");
-				if (defined(crnt(svc).userId)) {
-					form.input("user_id").setValue(crnt(svc).userId);
+				if (defined(svc.userId)) {
+					form.input("user_id").setValue(svc.userId);
 				}
 				form.input("uuid").setValue(idProject);
 				//отправка запроса на создание
 				form.send({
 //					async:false,
 					onSuccess:function(r){
-
-						crnt(svc).psid[r.responseJSON.uuid] = r.responseJSON.psid;
-						crnt(svc).tokens.push(r.responseJSON.token);
-												
+						svc.setPsid(r.responseJSON.uuid, r.responseJSON.psid);
+						svc.addToken(r.responseJSON.token);
 						collectProjectList(
 							[r.responseJSON.token]
 							,[]
 							,function(list){
 								list[0].token = r.responseJSON.token;
 								list[0].psid = r.responseJSON.psid;
-								displayProject({parent: svc, list:list, i:0}, 0);
+								new Prj(svc, list[0]).display();
 							}							
 						);
 					}
@@ -91,7 +89,7 @@ function enterOpenProject(svc, idProject){
 			} 
 			//обработка закрытияформы
 			,function(){
-				displayService(svc, svc.i);
+				displayService(svc);
 			}
 		)
 	);
@@ -102,19 +100,20 @@ function enterOpenProject(svc, idProject){
 //container - контейнер для вывода, 
 //svc - данные сервиса
 function refreshProjectList(container, svc, id) {
-	collectProjectList([crnt(svc).userId], []
+	Prj.collectList([svc.userId], []
 		,function(list){
 			fillList(
 				container //контейнер
 				,list     //массив
 				//функция формирования элементов отображения данных проекта
 				,function(item,i){
+					//формирование строки списка
 					var rowClass = "row"; var role = "участник";
 					if (item.data.initiator) {
 						rowClass += " initiator";
 						role += " инициатор";
 					}
-					//формирование строк списка
+
 					return $E('div',{class:rowClass})
 						.append($E('span',{class:"cell name"}).text(item.data.name))
 						.append($E('span',{class:"cell descr"}).text(item.data.descr))
@@ -123,7 +122,7 @@ function refreshProjectList(container, svc, id) {
 						.onClick(
 							function(evt){
 								//обработка клика на записи проета
-								enterProject({parent:svc, list:list,i:-1}, i);
+								new Prj(svc, list[i]).display();
 							}
 						);
 				}
@@ -135,28 +134,17 @@ function refreshProjectList(container, svc, id) {
 
 
 //Рабочая область сервиса
-function displayService(svc, i){
-	svc.i = i;
-	
+function displayService(svc){
 //обновление навигации
-	svc.cbDisplay = displayService;
-	svc.cbClose = function(){alert("close?");}
-	displayNav(
-		svc
-		,[
-			{
-				name:"Новый проект"
-				,callback:newProject.curry(svc
-													,displayService.curry(svc,i))
-			}
-		]
+	displayNav(svc
+		,[new ToolItem("Новый проект", newProject.curry(svc, displayService.curry(svc)))]
 	);
 //домен сервиса
-	domain = svc.list[i].data.domain;
+	domain = svc.data.domain;
 //заголовок, описание сервиса
-	document.title=svc.list[i].data.name;
-	$("content-title").text(svc.list[i].data.name);
-	$("content-description").text(svc.list[i].data.descr);
+	document.title=svc.data.name;
+	$("content-title").text(svc.data.name);
+	$("content-description").text(svc.data.descr);
 //пользователь:
 	$("left-container").clean();	
 
@@ -180,7 +168,7 @@ function displayService(svc, i){
 						list = list.map(function(item, i){return {id:item.uuid,data:item}})
 						list[0].token = token;
 						//вход на проект проект
-						enterProject({parent: svc, list: list, i:0}, 0);
+						new Prj(svc, list[0]).display();
 					}
 				)
 
@@ -192,7 +180,7 @@ function displayService(svc, i){
 		);
 		$('content-container').append(tokenFm);
 	
-	if (!defined(svc.list[i].userId)){
+	if (!defined(svc.userId)){
 	//форма регистрации
 		$('user-data').hide();
 		$('user-login').show();
@@ -202,14 +190,14 @@ function displayService(svc, i){
 				evt.stop();
 
 				//регистрация пользователя
-				svc.list[i].userId = loginFm.input("user_id").getValue();
+				svc.setUserId(loginFm.input("user_id").getValue());
 
 				$('user-login').hide();
-				$('user-data-name').text(svc.list[i].userId);
+				$('user-data-name').text(svc.userId);
 				$('user-data-descr').text('some description');
 				$('user-data').show();
-
-				displayService(svc, i);
+				
+				svc.display();
 			}
 		)
 	} else {
@@ -217,16 +205,8 @@ function displayService(svc, i){
 		var projList = makeList(
 			"Мои проекты"
 			,"my-project-list"
-			,[
-				{
-					name:"+"		//добавить проект (создать)
-					,callback:newProject.curry(svc, displayService.curry(svc,i))
-				}
-				,{
-					name:"O"   //обновить список
-					,callback:function(){refreshProjectList(projList.first('.content'),svc)} 
-				}
-			]
+			,[new ToolItem("новый", newProject.curry(svc, displayService.curry(svc)))
+			,new ToolItem("Обнов.", function(){refreshProjectList(projList.first('.content'),svc)})] 
 		).show();
 		refreshProjectList(projList.first('.content'),svc);
 		$("content-container").append(projList);
@@ -261,7 +241,7 @@ function displayService(svc, i){
 								projects_per_page:ipp,
 								status:"planning",
 								begin_date:'2011-01-01',
-								search:null}
+								esearch:null}
 					);
 			}
 			,function(){
@@ -292,13 +272,13 @@ function invitePart(prj){
 			//обработка сабмита
 			,function(evt, form){
 				form.set('action',domain+"/participant/invite")
-				form.input("psid").setValue(crnt(prj).psid);
+				form.input("psid").setValue(prj.psid);
 				//отправка запроса на создание
 				form.send({
 //					async:false,
 					onSuccess:function(r){
 						new Dialog().html(r.responseJSON.token).show();
-						displayProject(prj, prj.i);
+						displayProject(prj);
 					}
 					,onFailure:function(r){
 						alert(r.responseText) 
@@ -307,7 +287,7 @@ function invitePart(prj){
 			} 
 			//обработка закрытияформы
 			,function(){
-				displayProject(prj, i);
+				displayProject(prj);
 			}
 		)
 	);
@@ -352,16 +332,16 @@ function setPartData(prj, participant){
 		//обработка сабмита
 		,function(evt, form){
 			form.set('action',domain+"/participant/change");
-			if (defined(crnt(prj.parent).userId)) {
-				form.input("user_id").setValue(crnt(prj.parent).userId);
+			if (defined(prj.parent.userId)) {
+				form.input("user_id").setValue(prj.parent.userId);
 			}
 			form.input("uuid").setValue(participant.id);
-			form.input("psid").setValue(crnt(prj).psid);
+			form.input("psid").setValue(prj.psid);
 			//отправка запроса на создание
 			form.send({
 //				async:false,
 				onSuccess:function(r){
-					displayProject(prj, prj.i);
+					displayProject(prj);
 //					refreshPartList(prj);
 				}
 				,onFailure:function(r){
@@ -371,7 +351,7 @@ function setPartData(prj, participant){
 		} 
 		//обработка закрытияформы
 		,function(){
-			displayProject(prj, prj.i);
+			displayProject(prj);
 		}
 	);
 	$('content-container').clean().append(fm);
@@ -382,7 +362,7 @@ function setPartData(prj, participant){
 
 function refreshPartList(prj){
 	aget('/participant/list'
-		,{psid:crnt(prj).psid}
+		,{psid:prj.psid}
 		,function(list){
 			//обработка списка
 			fillList(
@@ -393,15 +373,18 @@ function refreshPartList(prj){
 					if (item.data.me) {
 							$("participant-me").first(".panel").clean();
 							$("participant-me").first(".name").text(item.data.name);
-							addToolItems(
-								$("participant-me").first(".panel")
-								,[
-									{
-										name:"Ed."
-										,callback:setPartData.curry(prj, item)
-									}
-								]
-							);							
+							$("participant-me").first(".panel").insert(
+								ToolItem.composeList(
+									[new ToolItem("Изм.", setPartData.curry(prj, item))]
+								)
+							);	
+//							if (defined(prj.parent.userId)){
+//								apost("/participant/change"
+//									,{psid:prj.psid, uuid:item.id, user_id:prj.parent.userId}
+//									,function(r){alert("userId has been set")}
+//								);
+//							}
+													
 							return;
 					}
 					//формирование строк списка
@@ -409,21 +392,14 @@ function refreshPartList(prj){
 					e.first(".title").text(item.data.name).set("title",item.data.descr);
 					var toolItems=[];
 					if (item.data.status == "accepted") {
-						toolItems.push({name:"-"
-											,callback:kickoutPart.curry(prj,item.id)
-											});
+						toolItems.push(new ToolItem("Искл.", kickoutPart.curry(prj,item.id)));
 					}
 					if (item.data.status == "voted") {
-						toolItems.push({name:"V"
-											,callback:conformPart.curry(prj,item.id,"include")
-											});
+						toolItems.push(new ToolItem("Согл.", conformPart.curry(prj,item.id,"include")));
 					}
-					
-					addToolItems(
-						e.first('.tool-panel')
-						,toolItems
-					
-					)
+					e.first('.tool-panel').insert(
+						ToolItem.composeList(toolItems)
+					);
 					return e;	
 				}
 			)
@@ -440,7 +416,7 @@ function refreshPartList(prj){
 function refreshParamList(container, prj) {
 	//запрос
 	aget('/project/parameter/list'
-		  ,{psid:crnt(prj).psid}
+		  ,{psid:prj.psid}
 			,function(list){
 				//обработка списка
 				fillList(
@@ -477,34 +453,42 @@ function refreshParamList(container, prj) {
 function refreshActList(container, prj) {
 	//запрос
 	aget('/activity/list'
-		  ,{psid:crnt(prj).psid}
-			,function(list){
+		  ,{psid:prj.psid}
+		  ,function(list){
 				//обработка списка
-				list = list.map(function(item,i){return {id:item.uuid, data:item};})
+				list = list.map(function(item,i){return {id:item.uuid, data:item};});
 				fillList(
 					container
 					,list
 					,function(item,i){
-						//формирование строк списка
-						var rowClass = "row"; var role = "участник";
-//										if (item.data.initiator) {
-//											rowClass += " initiator";
-//											role += " инициатор";
-//										}
-										//формирование строк списка
-						return $E('div',{class:rowClass})
-								.append($E('span',{class:"cell name"}).text(item.data.name))
-								.append($E('span',{class:"cell descr"}).text(item.data.descr))
-//										.append($E('span',{class:"cell role"}).text(role))
-//										.append($E('span',{class:"cell status"}).text(item.data.status))
-								.onClick(
-									function(evt){
-										//обработка клика на записи проета
-										displayActivity({cbDisplay:displayActivity, cbClose: parent:prj, list:list,i:-1}, i);
-									}
-								);
+						//формирование строки списка
+						var toolItems = []; var rA = refreshActList.curry(container, prj);
+						switch (item.data.status){
+							case "created":
+								toolItems.push(new ToolItem("Пуб.", Act.accept.curry(prj, item.id, rA)));
+								toolItems.push(new ToolItem("Удал.", Act.delete.curry(prj, item.id, rA)));
+								break;
+							case "voted":
+								toolItems.push(new ToolItem("Согл.", Act.accept.curry(prj, item.id, rA)));
+								toolItems.push(new ToolItem("Отказ.", Act.delete.curry(prj, item.id, rA)));
+								break;
+							case "accepted":
+								toolItems.push(new ToolItem("Убрать.", Act.deny.curry(prj, item.id, rA)));
+							
+						}
+						return makeRow(
+							[{nm:"name"},{nm:"begin"},{nm:"end"}]
+							,"descr"
+							,item.data
+							,i
+							,[]
+							,toolItems
+						);
 					}
-				)
+				);
+				container.delegate('click','div.fieldSet', function(evt,item){
+					new Act(prj, list[this.get('row_id')]).display();
+				});
 			}
 	);
 }	
@@ -524,20 +508,21 @@ function newActivity(prj, cbCancel){
 			//обработка сабмита
 			,function(evt, form){
 				form.set('action',domain+"/activity/create")
-				form.input("psid").setValue(crnt(prj).psid);
+				form.input("psid").setValue(prj.psid);
 				//отправка запроса на создание
 				form.send({
 //					async:false,
 					onSuccess:function(r){
+//ToDo: Сервисы создания должны взвращать созданные данные с той же структурой, с какой 
+//      они возвращаются в списках...
 						aget('/activity/list'
-		  					,{psid:crnt(prj).psid}
+		  					,{psid:prj.psid}
 							,function(list){
-								var act = {parent: prj, list:[], i:0};
+								var fields;
 								list.each(function(item,i){
-										act.list.push({id:item.uuid, data:item});
-										if (item.uuid == r.responseJSON.uuid) {act.i = i;}
+										if (item.uuid == r.responseJSON.uuid) {fields = item}
 									});
-								displayActivity(act,0);
+								new Act(prj,{id:r.uuid,data:fields}).display();
 							}
 						)
 					}
@@ -591,52 +576,16 @@ function enterProject(prj, i){
 
 
 
-function displayProject(prj, i){
-	prj.i = i;
-	cbDisplay = enterProject;
-	cbClose = function(){alert("close project");}
-
-	//готовим список доступных проектов для переключения
- 	var tokens = [];
- 	if (defined(crnt(prj.parent).userId)) {tokens.push(crnt(prj.parent).userId)}
- 	tokens = tokens.concat(crnt(prj.parent).tokens);
-	collectProjectList(tokens, []
-		,function(list){
-			//обновление навигации для сформированного списка
-			var next = {
-				parent : prj.parent
-				,cbDisplay : enterProject
-				,cbClose : function(){alert("close project")}
-				,list : function(){return list}
-				
-			} 
-			list.each(
-				function(item, j){
-					if (item.id == crnt(prj).id) {
-						//индекс текущего проекта в новом списке
-						next.i = j;
-						//формирование навигации
-						displayNav(
-							next
-							,[
-								{
-									name:"Новое мероприятие"
-									,callback:newActivity.curry(prj, displayProject.curry(prj,i))
-								}
-							]
-						);
-					}
-
-				}			
-			);
-		}
-	); 	
-
+function displayProject(prj){
+//обновление навигации
+	displayNav(prj
+		,[new ToolItem("Новое мероприятие", newActivity.curry(prj, displayProject.curry(prj)))]
+	);
 
 	//заголовок, описание проекта
-	document.title=prj.list[i].data.name;
-	$("content-title").text(prj.list[i].data.name+"     ("+prj.list[i].token+")");
-	$("content-description").text(prj.list[i].data.descr);
+	document.title=prj.data.name;
+	$("content-title").text(prj.data.name+"     ("+prj.token+")");
+	$("content-description").text(prj.data.descr);
 
 	$("content-container").clean();
 	$('left-footer').clean();	
@@ -653,14 +602,14 @@ function displayProject(prj, i){
 		,{
 			options: projectStatusList
 			,multiple: false
-			,selected: Object.keys(projectStatusList).indexOf(prj.list[i].data.status)
+			,selected: Object.keys(projectStatusList).indexOf(prj.data.status)
 		}
 	).insertTo(projAdm.first('.adm-status'));
 	if (!sel.getValue()){
 		sel.select(sel.first('li'));
 	}
 	sel.on('change',function(evt){
-			if (evt.target.value != crnt(prj).status) {setProjectStatus(prj, evt.target.value);}
+			if (evt.target.value != prj.status) {setProjectStatus(prj, evt.target.value);}
 		}
 	)
 
@@ -668,31 +617,19 @@ function displayProject(prj, i){
 	//формируем список
 	refreshPartList(prj);
 	//формируем действия
-	addToolItems(
-		$E('div').setStyle({width:"100%"}).insertTo($('left-footer'))
-		,[
-			{
-				name:"+"
-				,callback:invitePart.curry(prj)
-			}
-			,{
-				name:"O"
-				,callback:refreshPartList.curry(prj)
-			}
-		]
-		);
+	$E('div').setStyle({width:"100%"}).insertTo($('left-footer')).insert(
+		ToolItem.composeList(
+			[new ToolItem("Пригл.", invitePart.curry(prj))
+			,new ToolItem("Обн.", refreshPartList.curry(prj))]
+		)
+	);
 
 //параметры
 	//список параметров
 	var parList = makeList(
 		"Параметры"
 		,"proj-param-list"
-		,[
-			{
-				name:"O"
-				,callback:function(){refreshParamList(parList.first('.content'),prj)}
-			}
-		]
+		,[new ToolItem("Oбнов.", function(){refreshParamList(parList.first('.content'),prj)})]
 	).show();
 	refreshParamList(parList.first('.content'),prj);
 	$("content-container").append(parList);
@@ -700,20 +637,11 @@ function displayProject(prj, i){
 	var actList = makeList(
 		"Мероприятия"
 		,"proj-act-list"
-		,[
-			{
-				name:"+"
-				,callback:newActivity.curry(prj, displayProject.curry(prj,i))
-			}
-			,{
-				name:"O"
-				,callback:function(){refreshActList(actList.first('.content'),prj)}
-			}
-		]
+		,[new ToolItem("Нов.", newActivity.curry(prj, displayProject.curry(prj)))
+			,new ToolItem("Oбнов.", function(){refreshActList(actList.first('.content'),prj)})]
 	).show();
 	refreshActList(actList.first('.content'),prj);
 	$("content-container").append(actList);
-		
 }
 
 function closeProject(evt, prj) {
@@ -725,9 +653,9 @@ function closeProject(evt, prj) {
 //status - значение нового статуса
 function setProjectStatus(prj, status) {
 	apost('/project/status/change'
-			,{psid:crnt(prj).psid,status:status}
+			,{psid:prj.psid,status:status}
 			,function(r){
-					crnt(prj).status = status;
+					prj.status = status;
 			}
 	);
 }
@@ -738,46 +666,16 @@ function newResource(act, cbCancel){
 }
 
 
-function displayActivity(act, i) {
-	act.i = i;
-	cbDisplay = displayActivity;
-	cbClose = function(){alert("close project");}
-
-	aget('/activity/list'
-			,{psid:crnt(act.parent).psid}
-			,function(list){
-				var next = {
-					parent : act.parent
-					,cbDisplay : displayActivity
-					,cbClose : function(){alert("close project")}
-					,list : list.map(function(item,i){return{id:item.uuid,data:item};})
-				} 
-				next.list.each(
-					function(item, j){
-						if (item.id == crnt(act).id) {
-							//индекс текущего проекта в новом списке
-							next.i = j;
-							//формирование навигации
-							displayNav(
-								next
-								,[
-									{
-										name:"Новый ресурс"
-										,callback:newResource.curry(act, displayActivity.curry(act,i))
-									}
-								]
-							);
-						}
-	
-					}			
-				);
-			}
+function displayActivity(act) {
+//обновление навигации
+	displayNav(act
+		,[new ToolItem("Новый ресурс", newResource.curry(act, displayActivity.curry(act)))]
 	);
 
 	//заголовок, описание проекта
-	document.title=crnt(act).data.name;
-	$("content-title").text(crnt(act).data.name);
-	$("content-description").text(crnt(act).data.descr);
+	document.title=act.data.name;
+	$("content-title").text(act.data.name);
+	$("content-description").text(act.data.descr);
 
 	$("content-container").clean();
 	$('left-footer').clean();	
@@ -801,18 +699,14 @@ $('left-block').first('.rui-resizable-handle')._.style.width="4px";
 $('left-block').first('.rui-resizable-content')._.style.height="96%";
 
 
-var svc = {
-	list:function(){
-			return [
-				{id:"gamma",data:{uuid:"gamma",name:"Собутыльники",descr:"Пьянки, гулянки",domain:"http:172.16.5.83:8080"}, psid:{}, tokens:[]}
-				,{id:"beta",data:{uuid:"beta", name:"Оптовики",descr:"Оптовые заказы",domain:"http:172.16.5.83:8080"}, psid:{}, tokens:[]}
-			];
-		}
-	,i:0
-};
-//svc.prj = {parent:svc, list:[], i:0};
-
-displayService(svc, 0);
+new Svc(
+	{
+		id:"gamma"
+		,data:{uuid:"gamma",name:"Собутыльники",descr:"Пьянки, гулянки",domain:"http:172.16.5.83:8080"}
+		, psid:{}
+		, tokens:[]
+	}
+).display();
 
 
 }
