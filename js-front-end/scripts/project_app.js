@@ -1,4 +1,3 @@
-
 //Новый проект
 //svc - данные сервиса
 function newProject(svc, cbCancel){
@@ -14,33 +13,14 @@ function newProject(svc, cbCancel){
 			,"параметры созания проекта" //заголовок формы
 			//обработка сабмита
 			,function(evt, form){
-				form.set('action',domain+"/project/create")
-				if (defined(svc.userId)) {
-					form.input("user_id").setValue(svc.userId);
-				}
-				//отправка запроса на создание
-				form.send({
-//					async:false,
-					onSuccess:function(r){
-						svc.psid[r.responseJSON.uuid] = r.responseJSON.psid;
-						
-						collectProjectList(
-							[r.responseJSON.token]
-							,[]
-							,function(list){
-								list[0].token = r.responseJSON.token;
-								new Prj(svc, list[0]).display();
-							}							
-						);
-					}
-					,onFailure:function(r){
-						alert(r.responseText) 
-					}
+				Prj.create(svc, form.values(), function(prj){
+					svc.psid[prj.uuid] = prj.psid;
+					prj.display();
 				});
 			} 
 			//обработка закрытияформы
 			,function(){
-				displayService(svc);
+				cbCancel;
 			}
 		)
 	);
@@ -72,7 +52,7 @@ function enterOpenProject(svc, idProject){
 					onSuccess:function(r){
 						svc.setPsid(r.responseJSON.uuid, r.responseJSON.psid);
 						svc.addToken(r.responseJSON.token);
-						collectProjectList(
+						Prj.collectList(
 							[r.responseJSON.token]
 							,[]
 							,function(list){
@@ -89,7 +69,7 @@ function enterOpenProject(svc, idProject){
 			} 
 			//обработка закрытияформы
 			,function(){
-				displayService(svc);
+				svc.display();
 			}
 		)
 	);
@@ -99,37 +79,29 @@ function enterOpenProject(svc, idProject){
 //Обновление списка проектов пользователя
 //container - контейнер для вывода, 
 //svc - данные сервиса
-function refreshProjectList(container, svc, id) {
-	Prj.collectList([svc.userId], []
-		,function(list){
-			fillList(
-				container //контейнер
-				,list     //массив
-				//функция формирования элементов отображения данных проекта
-				,function(item,i){
-					//формирование строки списка
-					var rowClass = "row"; var role = "участник";
-					if (item.data.initiator) {
-						rowClass += " initiator";
-						role += " инициатор";
-					}
-
-					return $E('div',{class:rowClass})
-						.append($E('span',{class:"cell name"}).text(item.data.name))
-						.append($E('span',{class:"cell descr"}).text(item.data.descr))
-						.append($E('span',{class:"cell role"}).text(role))
-						.append($E('span',{class:"cell status"}).text(item.data.status))
-						.onClick(
-							function(evt){
-								//обработка клика на записи проета
-								new Prj(svc, list[i]).display();
-							}
-						);
-				}
-			)
-
-		} 
-	)
+function refreshProjectList(list, container, svc) {
+//	Prj.collectList([svc.userId], []
+//		,function(list){
+			container.clean().insert(makeRowSet(
+				[{nm:"name"},{nm:"begin_date"},{nm:"role"},{nm:"status"}]
+				,"descr"
+				,list.map(function(item,i){
+					var rowData = Object.clone(item);
+					if (rowData.initiator) {rowData.role = "иниц.";}
+					else {rowData.role = "учас.";}
+					return rowData;
+				})
+				,function(item){return "row";}
+				,[]
+			));
+			if (!container.delegates('click', 'div.fieldset')) {
+				container.delegate('click','div.fieldset',function(evt,p1){
+					new Prj(svc, list[this.get("row_id")]).display();
+				});
+			}
+//		} 
+//	);
+	return true;
 }
 
 
@@ -137,14 +109,14 @@ function refreshProjectList(container, svc, id) {
 function displayService(svc){
 //обновление навигации
 	displayNav(svc
-		,[new ToolItem("Новый проект", newProject.curry(svc, displayService.curry(svc)))]
+		,[new ToolItem("Новый проект", newProject.curry(svc, function(){svc.display();}))]
 	);
 //домен сервиса
-	domain = svc.data.domain;
+	domain = svc.domain;
 //заголовок, описание сервиса
-	document.title=svc.data.name;
-	$("content-title").text(svc.data.name);
-	$("content-description").text(svc.data.descr);
+	document.title=svc.name;
+	$("content-title").text(svc.name);
+	$("content-description").text(svc.descr);
 //пользователь:
 	$("left-container").clean();	
 
@@ -165,7 +137,6 @@ function displayService(svc){
 				//список (из 1 проекта по токену)
 				aget('/project/list/userid', {user_id:token}
 					,function(list){
-						list = list.map(function(item, i){return {id:item.uuid,data:item}})
 						list[0].token = token;
 						//вход на проект проект
 						new Prj(svc, list[0]).display();
@@ -205,44 +176,38 @@ function displayService(svc){
 		var projList = makeList(
 			"Мои проекты"
 			,"my-project-list"
-			,[new ToolItem("новый", newProject.curry(svc, displayService.curry(svc)))
-			,new ToolItem("Обнов.", function(){refreshProjectList(projList.first('.content'),svc)})] 
-		).show();
-		refreshProjectList(projList.first('.content'),svc);
-		$("content-container").append(projList);
+			,[
+				new ToolItem("новый", newProject.curry(svc, function(){svc.display();}))
+			] 
+		).insertTo($("content-container")).show();
+		svc.pList.once('projectList', refreshProjectList.rcurry(projList.first('.content'), svc));
 	}
 	//список открытых проектов
 		var lcont =	makePList(
 			"Список открытых проектов"
 			,"open-project-list"
 			,function(pn, ipp) {
-				new Xhr(
-					domain+'/project/list'
+				aget('/project/list'
 					,{
-						onSuccess: function(r){
-								fillList(lcont.first('.content'), r.responseJSON.projects,
-									function(item, i) {
-										return $E('div',{class:"row"})
-											.append($E('span',{class:"cell name"}).text(item.name))
-											.append($E('span',{class:"cell descr"}).text(item.descr))
-											.onClick(
-												function(evt){
-													enterOpenProject(svc, item.uuid);
-												}
-											);
-									}
-								);
-								return r.responseJSON.pages;								
-							}
-						,onFailure: function(r){
-								alert(r.responseText);
-							}
-					}).send({page_number:pn, 
-								projects_per_page:ipp,
-								status:"planning",
-								begin_date:'2011-01-01',
-								esearch:null}
-					);
+						page_number:pn, 
+						projects_per_page:ipp,
+						status:"planning",
+						begin_date:'2011-01-01',
+						search:null
+					}
+					,function(r){
+						lcont.first('.content').clean().insert(makeRowSet(
+							[{nm:"name"},{nm:"begin_date"}]
+							,"descr"
+							,r.projects
+							,function(item){return "row";}
+							,[]
+						))
+						.delegate('click','div.fieldset',function(evt,p1){
+							enterOpenProject(svc, r.projects[this.get("row_id")].uuid);
+						});
+					}
+				);
 			}
 			,function(){
 				lcont.clean().remove();
@@ -271,23 +236,13 @@ function invitePart(prj){
 			,"данные участника" //заголовок формы
 			//обработка сабмита
 			,function(evt, form){
-				form.set('action',domain+"/participant/invite")
-				form.input("psid").setValue(prj.psid);
-				//отправка запроса на создание
-				form.send({
-//					async:false,
-					onSuccess:function(r){
-						new Dialog().html(r.responseJSON.token).show();
-						displayProject(prj);
-					}
-					,onFailure:function(r){
-						alert(r.responseText) 
-					}
+				prj.invitePart(form.values(),function(resp){
+						prj.display();
 				});
 			} 
 			//обработка закрытияформы
 			,function(){
-				displayProject(prj);
+				prj.display();
 			}
 		)
 	);
@@ -296,28 +251,14 @@ function invitePart(prj){
 //запрос на исключение участника
 //prj - данные проекта, 
 //uuid - ид участника
-function kickoutPart(prj, uuid){
+function kickoutPart(prj, fields){
 	var d = new Dialog.Prompt({label:"Причина"})
 		.onOk(
 			function(){
-				apost('/participant/exclude', {psid:prj.psid, uuid:uuid, comment:this.input.value()}
-						,function(r){
-								refreshPartList(prj)
-								d.hide();
-						}
-				);
+				new Part(prj, fields).kickout(undefined, this.input.value());
+				this.hide();
 			}
 		).show();
-}
-//запрос на согласие на предложение по участнику
-//prj - данные проекта, 
-//uuid - код участника
-function conformPart(prj, uuid, vote){
-	apost('/participant/vote/conform', {psid:prj.psid,uuid:uuid,vote:vote}
-			,function(r){
-					refreshPartList(prj);
-			}
-	);
 }
 
 function setPartData(prj, participant){
@@ -331,80 +272,64 @@ function setPartData(prj, participant){
 		,"данные участника" //заголовок формы
 		//обработка сабмита
 		,function(evt, form){
-			form.set('action',domain+"/participant/change");
-			if (defined(prj.parent.userId)) {
-				form.input("user_id").setValue(prj.parent.userId);
-			}
-			form.input("uuid").setValue(participant.id);
-			form.input("psid").setValue(prj.psid);
-			//отправка запроса на создание
-			form.send({
-//				async:false,
-				onSuccess:function(r){
-					displayProject(prj);
-//					refreshPartList(prj);
-				}
-				,onFailure:function(r){
-					alert(r.responseText) 
-				}
+			Part.setData(prj, form.values(),function(resp){
+				prj.display();
 			});
 		} 
 		//обработка закрытияформы
 		,function(){
-			displayProject(prj);
+			prj.display();
 		}
 	);
 	$('content-container').clean().append(fm);
 	fm = fm.first('form');
-	fm.input("name").setValue(participant.data.name);
-	fm.input("descr").setValue(participant.data.descr);
+	fm.input("name").setValue(participant.name);
+	fm.input("descr").setValue(participant.descr);
+	fm.input("uuid").setValue(participant.uuid);
+	fm.input("psid").setValue(prj.psid);
 }
 
-function refreshPartList(prj){
-	aget('/participant/list'
-		,{psid:prj.psid}
-		,function(list){
-			//обработка списка
-			fillList(
-				$('left-container')
-				,list.map(function(item, i){ return {id:item.uuid,data:item};})
-				,function(item,i){
-					if (item.data.status == "denied") {return;}
-					if (item.data.me) {
-							$("participant-me").first(".panel").clean();
-							$("participant-me").first(".name").text(item.data.name);
-							$("participant-me").first(".panel").insert(
-								ToolItem.composeList(
-									[new ToolItem("Изм.", setPartData.curry(prj, item))]
-								)
-							);	
-//							if (defined(prj.parent.userId)){
-//								apost("/participant/change"
-//									,{psid:prj.psid, uuid:item.id, user_id:prj.parent.userId}
-//									,function(r){alert("userId has been set")}
-//								);
-//							}
-													
-							return;
-					}
-					//формирование строк списка
-					var e = $('participant-template').clone().set("id","part"+item.id).show();
-					e.first(".title").text(item.data.name).set("title",item.data.descr);
-					var toolItems=[];
-					if (item.data.status == "accepted") {
-						toolItems.push(new ToolItem("Искл.", kickoutPart.curry(prj,item.id)));
-					}
-					if (item.data.status == "voted") {
-						toolItems.push(new ToolItem("Согл.", conformPart.curry(prj,item.id,"include")));
-					}
-					e.first('.tool-panel').insert(
-						ToolItem.composeList(toolItems)
-					);
-					return e;	
-				}
-			)
+//Обновление списка участников
+//prj - проект
+function refreshPartList(list, container, prj){
+	var me;
+
+	container.clean().insert(makeRowSet(
+		[{nm:"name"}]
+		,"descr"
+		,list.filter(function(rowData,i){
+			if (rowData.me) {
+				me = rowData;  //созранение записи о текущем участнике
+				return false; //не включая в список 
+			} else {
+				return rowData.status != "denied";  //фильтруем исключенных 
+			}
+		})
+		,function(item){return "part-list-row";}
+		,function(rowData){
+			var toolItems=[];
+			if (rowData.status == "accepted") {
+				toolItems.push(new ToolItem("Исключить", kickoutPart.curry(prj,rowData)));
+			}
+			if (rowData.status == "voted") {
+				toolItems.push(new ToolItem("Согласиться", Part.conform.curry(prj,rowData.uuid)));
+				toolItems.push(new ToolItem("Отказаться", Part.reject.curry(prj,rowData.uuid)));
+			}
+			return toolItems;
 		}
-	)
+	));
+	if (!container.delegates('click', 'div.fieldset')) {
+		container.delegate('click','div.fieldset',function(evt,p1){
+//			new Prj(svc, list[this.get("row_id")]).display();
+		});
+	}
+	$("participant-me").first(".panel").clean();
+	$("participant-me").first(".name").text(me.name);
+	$("participant-me").first(".panel").insert(
+		ToolItem.composeList(
+			[new ToolItem("Изм.", setPartData.curry(prj, me))]
+		)
+	);	
 }
 
 //*****************************************
@@ -413,34 +338,20 @@ function refreshPartList(prj){
 //обновление списка параметров
 //container - контейнер элементов,
 //prj - данные проекта
-function refreshParamList(container, prj) {
-	//запрос
-	aget('/project/parameter/list'
-		  ,{psid:prj.psid}
-			,function(list){
-				//обработка списка
-				fillList(
-					container
-					,list
-					,function(item,i){
-						//формирование строк списка
-						//формирование строк списка
-						if (!item.tecnical) {
-							return $E('div',{class:"row"})
-								.append($E('span',{class:"cell name", title:item.descr}).text(item.name))
-								.append($E('span',{class:"cell value"}).text(item.value))
-								.onClick(
-									function(evt){
-										//обработка клика на записи проета
-										alert('param clicked');
-									}
-								);
-							
-						}
-					}
-				)
-			}
-	);
+function refreshParamList(list, container, prj) {
+	container.clean().insert(makeRowSet(
+		[{nm:"name"},{nm:"value"}]
+		,"name"
+		,list
+		,"param-list-row"
+		,[]
+	));
+	if (!container.delegates('click', 'div.fieldset')) {
+		container.delegate('click','div.fieldset',function(evt,p1){
+//			new Prj(svc, list[this.get("row_id")]).display();
+		});
+	}
+
 }	
 
 
@@ -450,47 +361,42 @@ function refreshParamList(container, prj) {
 //обновление списка мероприятий
 //container - контейнер элементов,
 //prj - данные проекта
-function refreshActList(container, prj) {
+function refreshActList(list, container, prj) {
 	//запрос
-	aget('/activity/list'
-		  ,{psid:prj.psid}
-		  ,function(list){
-				//обработка списка
-				list = list.map(function(item,i){return {id:item.uuid, data:item};});
-				fillList(
-					container
-					,list
-					,function(item,i){
-						//формирование строки списка
-						var toolItems = []; var rA = refreshActList.curry(container, prj);
-						switch (item.data.status){
-							case "created":
-								toolItems.push(new ToolItem("Пуб.", Act.accept.curry(prj, item.id, rA)));
-								toolItems.push(new ToolItem("Удал.", Act.delete.curry(prj, item.id, rA)));
-								break;
-							case "voted":
-								toolItems.push(new ToolItem("Согл.", Act.accept.curry(prj, item.id, rA)));
-								toolItems.push(new ToolItem("Отказ.", Act.delete.curry(prj, item.id, rA)));
-								break;
-							case "accepted":
-								toolItems.push(new ToolItem("Убрать.", Act.deny.curry(prj, item.id, rA)));
-							
-						}
-						return makeRow(
-							[{nm:"name"},{nm:"begin"},{nm:"end"}]
-							,"descr"
-							,item.data
-							,i
-							,[]
-							,toolItems
-						);
+	//обработка списка
+	var actList = list.filter(function(item,i){return item.status != "denied"});
+	container.clean().insert(makeRowSet(
+		[{nm:"name"},{nm:"begin"},{nm:"end"},{nm:"status"}]
+		,"descr"
+		,actList
+		,function(rowData){ return "act-list-row" }
+		,function(rowData){
+			var toolItems = []; var rA = function(){} ;
+			switch (rowData.status){
+				case "created":
+					toolItems.push(new ToolItem("Пуб.", Act.accept.curry(prj, rowData.uuid)));
+					toolItems.push(new ToolItem("Удал.", Act.delete.curry(prj, rowData.uuid)));
+					break;
+				case "voted":
+					toolItems.push(new ToolItem("Согл.", Act.accept.curry(prj, rowData.uuid)));
+					toolItems.push(new ToolItem("Отказ.", Act.deny.curry(prj, rowData.uuid)));
+					break;
+				case "accepted":
+					toolItems.push(new ToolItem("Убрать.", Act.deny.curry(prj, rowData.uuid)));
+					if (!rowData.participant) {
+						toolItems.push(new ToolItem("Участвовать.", Act.participate.curry(prj, "include", rowData.uuid)));
+					} else {
+						toolItems.push(new ToolItem("Не участвовать.", Act.participate.curry(prj, "exclude", rowData.uuid)));
 					}
-				);
-				container.delegate('click','div.fieldSet', function(evt,item){
-					new Act(prj, list[this.get('row_id')]).display();
-				});
 			}
-	);
+			return toolItems;
+		}
+	))
+	if (!container.delegates('click', 'div.fieldset')) {
+		container.delegate('click','div.fieldset',function(evt,p1){
+			new Act(prj, actList[this.get('row_id')]).display();
+		})
+	};
 }	
 //Новое мероприятие
 //prj - данные проекта
@@ -507,85 +413,103 @@ function newActivity(prj, cbCancel){
 			,"параметры созания мероприятия" //заголовок формы
 			//обработка сабмита
 			,function(evt, form){
-				form.set('action',domain+"/activity/create")
-				form.input("psid").setValue(prj.psid);
-				//отправка запроса на создание
-				form.send({
-//					async:false,
-					onSuccess:function(r){
-//ToDo: Сервисы создания должны взвращать созданные данные с той же структурой, с какой 
-//      они возвращаются в списках...
-						aget('/activity/list'
-		  					,{psid:prj.psid}
-							,function(list){
-								var fields;
-								list.each(function(item,i){
-										if (item.uuid == r.responseJSON.uuid) {fields = item}
-									});
-								new Act(prj,{id:r.uuid,data:fields}).display();
-							}
-						)
-					}
-					,onFailure:function(r){
-						alert(r.responseText) 
-					}
+				Act.create(prj, form.values(), function(act){
+					act.display();
 				});
 			} 
 			//обработка закрытияформы
 			,function(){
-				displayProject(prj, prj.i);
+				cbCancel();
 			}
 		)
 	);
 } 
 
+//*****************************************
+//Ресурсы
 
+//Новый ресурс
+function newResource(prj, cbOk, cbCancel){
+//заголовок
+	$("content-title").text('Новый ресурс');
+	$("content-description").text('заполните поля, бла бла бла');
 
-
-//Вход на проект по ид польз
-function enterProject(prj, i){
-	if (defined(crnt(prj.parent).psid[prj.list[i].id])) {
-		prj.list[i].psid = crnt(prj.parent).psid[prj.list[i].id];
-		displayProject(prj, i)
-	} else {
-		if (defined(prj.list[i].token)) {
-			apost('/project/enter/invitation', {uuid:prj.list[i].id,token:prj.list[i].token}
-				,function(r){
-					crnt(prj.parent).tokens.push(prj.list[i].token);
-					prj.list[i].psid = crnt(prj.parent).psid[prj.list[i].id] = r.psid;
-					//регистрация успешна, показ проекта
-					displayProject(prj, i);
-				}
-			);
-		} else if (defined(crnt(prj.parent).userId)) {
-			//запрос регистрации
-			apost('/project/enter/invitation', {uuid:prj.list[i].id,token:crnt(prj.parent).userId}
-				,function(r){
-					prj.list[i].psid = crnt(prj.parent).psid[prj.list[i].id] = r.psid;
-					//регистрация успешна, показ проекта
-					displayProject(prj, i)
-				}
-			);
-		} else {
-			alert("Нет ни токена ни пользователя"); return;
-		}
-	}
+//форм формы
+	$('content-container').clean().append(
+		makeForm(
+			$('new-resource-template')  //шаблон формы
+			,"new-resource"
+			,"параметры созания ресурса" //заголовок формы
+			//обработка сабмита
+			,function(evt, form){
+				Res.create(prj, form.values(), function(res){
+					cbOk();
+				});
+			} 
+			//обработка закрытияформы
+			,function(){
+				cbCancel();
+			}
+		)
+	);
 }
+//обновление списка ресурсов
+//container - контейнер элементов,
+//prj - данные проекта
+function refreshResList(list, container, prj) {
+	//запрос
+	//обработка списка
+	container.clean().insert(makeRowSet(
+		[{nm:"name"},{nm:"amount"},{nm:"units"}]
+		,"descr"
+		,list
+		,function(rowData){ return "res-list-row" }
+		,function(rowData){
+			var toolItems = [];
+//			switch (rowData.status){
+//				case "voted":
+//					toolItems.push(new ToolItem("Согл.", Res.accept.curry(prj, rowData.uuid)));
+//					toolItems.push(new ToolItem("Отказ.", Res.deny.curry(prj, rowData.uuid)));
+//					break;
+//				case "accepted":
+//					toolItems.push(new ToolItem("Использ.", Res.use.curry(prj, rowData.uuid, amount)));
+//					toolItems.push(new ToolItem("Убрать.", Act.exclude.curry(prj, rowData.uuid)));
+				
+//			}
+			return toolItems;
+		}
+	))
+	if (!container.delegates('click', 'div.fieldset')) {
+		container.delegate('click','div.fieldset',function(evt,p1){
+//			new Act(prj, list[this.get('row_id')]).display();
+			alert("res clicked");
+		})
+	};
+}	
 
-
-
+//Смена статуса проекта
+//prj - данные проекта, 
+//status - значение нового статуса
+function setProjectStatus(prj, status) {
+	apost('/project/status/change'
+			,{psid:prj.psid,status:status}
+			,function(r){
+					prj.status = status;
+			}
+	);
+}
 
 
 function displayProject(prj){
 //обновление навигации
 	displayNav(prj
-		,[new ToolItem("Новое мероприятие", newActivity.curry(prj, displayProject.curry(prj)))]
+		,[new ToolItem("Новое мероприятие", newActivity.curry(prj, function(){prj.display();}))]
 	);
 
 	//заголовок, описание проекта
-	document.title=prj.data.name;
-	$("content-title").text(prj.data.name+"     ("+prj.token+")");
-	$("content-description").text(prj.data.descr);
+	document.title=prj.name;
+	$("content-title").text(prj.name+"     ("+prj.token+")");
+	$("content-description").text(prj.descr);
 
 	$("content-container").clean();
 	$('left-footer').clean();	
@@ -602,7 +526,7 @@ function displayProject(prj){
 		,{
 			options: projectStatusList
 			,multiple: false
-			,selected: Object.keys(projectStatusList).indexOf(prj.data.status)
+			,selected: Object.keys(projectStatusList).indexOf(prj.status)
 		}
 	).insertTo(projAdm.first('.adm-status'));
 	if (!sel.getValue()){
@@ -615,12 +539,13 @@ function displayProject(prj){
 
 //участники
 	//формируем список
-	refreshPartList(prj);
+//	refreshPartList(prj);
+	prj.partList.once('refreshPartList', refreshPartList.rcurry($('left-container'), prj));
+
 	//формируем действия
 	$E('div').setStyle({width:"100%"}).insertTo($('left-footer')).insert(
 		ToolItem.composeList(
-			[new ToolItem("Пригл.", invitePart.curry(prj))
-			,new ToolItem("Обн.", refreshPartList.curry(prj))]
+			[new ToolItem("Пригл.", invitePart.curry(prj))]
 		)
 	);
 
@@ -629,61 +554,232 @@ function displayProject(prj){
 	var parList = makeList(
 		"Параметры"
 		,"proj-param-list"
-		,[new ToolItem("Oбнов.", function(){refreshParamList(parList.first('.content'),prj)})]
-	).show();
-	refreshParamList(parList.first('.content'),prj);
-	$("content-container").append(parList);
+		,[] //[new ToolItem("Oбнов.", function(){refreshParamList(parList.first('.content'),prj)})]
+	).insertTo($("content-container")).show();
+	prj.prmList.once('refreshParamList', refreshParamList.rcurry(parList.first('.content'),prj));
 //мероприятия
 	var actList = makeList(
 		"Мероприятия"
 		,"proj-act-list"
-		,[new ToolItem("Нов.", newActivity.curry(prj, displayProject.curry(prj)))
-			,new ToolItem("Oбнов.", function(){refreshActList(actList.first('.content'),prj)})]
-	).show();
-	refreshActList(actList.first('.content'),prj);
-	$("content-container").append(actList);
+		,[new ToolItem("Нов.", newActivity.curry(prj, function(){prj.display();}))
+		]
+	).insertTo($("content-container")).show();
+	prj.actList.once('refreshActList', refreshActList.rcurry(actList.first('.content'),prj));
+
+//ресурсы
+	var resList = makeList(
+		"Ресурсы"
+		,"proj-res-list"
+		,[new ToolItem("Нов.", newResource.curry(prj, function(){prj.display();}, function(){prj.display();}))
+		]
+	).insertTo($("content-container")).show();
+	prj.resList.once('refreshResList', refreshResList.rcurry(resList.first('.content'),prj));
+
 }
 
 function closeProject(evt, prj) {
 
 }
 
-//Смена статуса проекта
-//prj - данные проекта, 
-//status - значение нового статуса
-function setProjectStatus(prj, status) {
-	apost('/project/status/change'
-			,{psid:prj.psid,status:status}
-			,function(r){
-					prj.status = status;
+
+
+
+/******************************************
+						Мероприятие
+******************************************/
+
+//****************************************
+//                Участники
+
+//Обновление списка участников
+//act - проект
+function refreshActPartList(list, container, act){
+	container.clean().insert(makeRowSet(
+		[{nm:"name"}]
+		,"descr"
+		,act.parent.partList.data.filter(function(rowData,i){
+			return list.includes(rowData.uuid);
+		})
+		,function(item){return "part-list-row";}
+		,function(rowData){
+			var toolItems = [];
+//			switch (rowData.status){
+//				case "voted":
+//					toolItems.push(new ToolItem("Согл.", Res.accept.curry(prj, rowData.uuid)));
+//					toolItems.push(new ToolItem("Отказ.", Res.deny.curry(prj, rowData.uuid)));
+//					break;
+//				case "accepted":
+//					toolItems.push(new ToolItem("Использ.", Res.use.curry(prj, rowData.uuid, amount)));
+//					toolItems.push(new ToolItem("Убрать.", Res.exclude.curry(prj, rowData.uuid)));
+//			}
+			return toolItems;
+		}
+	));
+//	if (!container.delegates('click', 'div.fieldset')) {
+//		container.delegate('click','div.fieldset',function(evt,p1){
+//			new Prj(svc, list[this.get("row_id")]).display();
+//		});
+//	}
+}
+
+
+//*****************************************
+//                Ресурсы
+
+//Включение ресурса
+function includeResource(res, act, cbCancel){
+//заголовок
+//	$("content-title").text('Включение ресурса в мероприятие');
+//	$("content-description").text('заполните поля, бла бла бла');
+
+//форм формы
+	$('content-container').clean().append(
+		makeForm(
+			$('include-resource-template')  //шаблон формы
+			,"include-resource"
+			,"параметры включения ресурса" //заголовок формы
+			//обработка сабмита
+			,function(evt, form){
+				res.addTo(act, form.values(), function(resp){
+					act.display();
+				});
+			} 
+			//обработка закрытияформы
+			,function(){
+				cbCancel();
 			}
+		)
 	);
 }
 
+//обновление списка ресурсов пректа для мероприятия
+//container - контейнер элементов,
+//prj - данные проекта
+function refreshPrjResList(list, container, act) {
+	//запрос
+	//обработка списка
+	container.clean().insert(makeRowSet(
+		[{nm:"name"},{nm:"use"}]
+		,"descr"
+		,act.parent.resList.data.filter(function(item,i){
+			return !(list.map(function(item,i){return item.uuid;}).includes(item.uuid))
+		})
+		,function(rowData){ return "res-list-row" }
+		,function(rowData){
+			var toolItems = [];
+//			switch (rowData.status){
+//				case "voted":
+//					toolItems.push(new ToolItem("Согл.", Res.accept.curry(prj, rowData.uuid)));
+//					toolItems.push(new ToolItem("Отказ.", Res.deny.curry(prj, rowData.uuid)));
+//					break;
+//				case "accepted":
+					toolItems.push(new ToolItem("Включить", function(){
+						includeResource(new Res(act.parent, rowData), act, function(){act.display()})
+					}));
+//					toolItems.push(new ToolItem("Убрать.", Act.exclude.curry(prj, rowData.uuid)));
+//			}
+			return toolItems;
+		}
+	))
+	if (!container.delegates('click', 'div.fieldset')) {
+		container.delegate('click','div.fieldset',function(evt,p1){
+//			new Act(prj, list[this.get('row_id')]).display();
+		})
+	};
+}	
 
-function newResource(act, cbCancel){
-	alert("new resource");	
-}
+//обновление списка ресурсов мероприятия
+//container - контейнер элементов,
+//prj - данные проекта
+function refreshActResList(list, container, act) {
+	//запрос
+	//обработка списка
+	container.clean().insert(makeRowSet(
+		[{nm:"name"},{nm:"amount"},{nm:"units"},{nm:"use"}]
+		,"descr"
+		,list
+		,function(rowData){ return "res-list-row" }
+		,function(rowData){
+			var toolItems = [];
+			switch (rowData.status){
+				case "voted":
+					toolItems.push(new ToolItem("Включить", Res.include.curry(act, rowData.uuid)));
+					toolItems.push(new ToolItem("Исключить", Res.exclude.curry(act, rowData.uuid)));
+					break;
+				case "accepted":
+					toolItems.push(new ToolItem("Убрать", Res.exclude.curry(act, rowData.uuid)));
+			}
+			return toolItems;
+		}
+	))
+	if (!container.delegates('click', 'div.fieldset')) {
+		container.delegate('click','div.fieldset',function(evt,p1){
+//			new Act(prj, list[this.get('row_id')]).display();
+		})
+	};
+}	
 
 
 function displayActivity(act) {
-//обновление навигации
-	displayNav(act
-		,[new ToolItem("Новый ресурс", newResource.curry(act, displayActivity.curry(act)))]
-	);
+//обновление 
+	var toolItems = [];
+	if (act.status == "accepted") {toolItems.push(new ToolItem("Новый ресурс", newResource.curry(act, function(){act.display();}, function(){act.display();})))} 
+	if (!act.participant) {
+		toolItems.push(new ToolItem("Участвовать", function() {act.participate(
+			function(resp, isOk, r){ if (isOk) {act.participant = true; act.display();} }
+		)}));
+	}else{
+		toolItems.push(new ToolItem("Не участвовать", function() {act.unParticipate(
+			function(resp, isOk, r){ if (isOk) {act.participant = false; act.display();} }
+		)}));
+	} 
+
+	displayNav(act, toolItems);
 
 	//заголовок, описание проекта
-	document.title=act.data.name;
-	$("content-title").text(act.data.name);
-	$("content-description").text(act.data.descr);
+	document.title=act.name;
+	$("content-title").text(act.name);
+	$("content-description").text(act.descr);
 
 	$("content-container").clean();
-	$('left-footer').clean();	
+//	$('left-footer').clean();	
+	
+//параметры
+	//список параметров
+	var prmList = makeList(
+		"Параметры"
+		,"proj-param-list"
+		,[]//[new ToolItem("Oбнов.", function(){refreshParamList(parList.first('.content'),prj)})]
+	).insertTo($("content-container")).show();
+	act.prmList.once('refreshParamList', refreshParamList.rcurry(prmList.first('.content'),act));
+
+//участники
+	//формируем список
+	var partList = makeList(
+		"Участники"
+		,"act-part-list"
+		,[]
+	).insertTo($("content-container")).show();
+	act.partList.once('refreshActPartList', refreshActPartList.rcurry(partList.first(".content"), act));
+
+// Ресурсы мероприятия
+	var actResList = makeList(
+		"Используемые ресурсы"
+		,"act-res-list"
+		,[]
+	).insertTo($("content-container")).show();
+	act.resList.once('refreshActResList', refreshActResList.rcurry(actResList.first('.content'),act));
+
+// Ресурсы проекта
+	var prjResList = makeList(
+		"Доступные на проекте ресурсы"
+		,"prj-res-list"
+		,[new ToolItem("Нов.", newResource.curry(act.parent, function(){act.display();}, function(){act.display();}))]
+	).insertTo($("content-container")).show();
+	act.resList.once('refreshPrjResList', refreshPrjResList.rcurry(prjResList.first('.content'),act));
+	
 	
 
-
-
-	alert("activity");
 }
 
 function begin(){
@@ -701,8 +797,7 @@ $('left-block').first('.rui-resizable-content')._.style.height="96%";
 
 new Svc(
 	{
-		id:"gamma"
-		,data:{uuid:"gamma",name:"Собутыльники",descr:"Пьянки, гулянки",domain:"http:172.16.5.83:8080"}
+		uuid:"gamma",name:"Собутыльники",descr:"Пьянки, гулянки",domain:"http:172.16.5.83:8080"
 		, psid:{}
 		, tokens:[]
 	}

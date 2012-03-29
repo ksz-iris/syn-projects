@@ -2,50 +2,52 @@
 
 var domain;
 
+function error(r) {
+	alert(r.toString());	
+}
+
 function aget(url, pars, process) {
 	new Xhr(
 		domain+url
 		,{
 			method:'post'
-			,onSuccess:function(r){process(r.responseJSON)}
-			,onFailure:function(r){alert(r.responseText)}
+			,onSuccess: function(r) {
+				process(r.responseJSON, true, r);
+			}
+			,onFail: function(r) {
+				process(r.responseJSON, false, r);
+			}
+			,onComplete: function(r) {
+				if ((r.status < 500) && (r.status >= 400)) {process(r.responseJSON, false, r);}
+			}
 		}
 	).send(pars);
 }
 
-function apost(url, _data, continuation) {
+function apost(url, _data, process) {
 	new Xhr(
 		domain+url
 		,{
 			method:'post'
-			,onSuccess:function(r){continuation(r.responseJSON)}
-			,onFailure:function(r){alert(r.responseText)}
+			,onSuccess: function(r) {
+				process(r.responseJSON, true, r);
+			}
+			,onFail: function(r) {
+				error(r.responseJSON, false, r);
+			}
+			,onComplete: function(r) {
+				if ((r.status < 500) && (r.status >= 400)) {process(r.responseJSON, false, r);}
+			}
 		}
 	).send(_data);
 	
-}
-
-function collectProjectList(tokens, list, continuation) {
-	if (tokens.length > 0) {
-		aget('/project/list/userid', {user_id:tokens.shift()}
-				,function(res){
-					collectProjectList(
-						tokens
-						,list.concat(res.map(function(item, i){return {id:item.uuid,data:item}}))
-						,continuation 
-				);
-				}
-		);
-	} else {
-		continuation(list);
-	}
 }
 
 //индекс эл-та массива для которого фцнкция вернет true
 function idxById(arr, id) {
 	var ret;
 	arr.each(function(item,i){
-		if (item.id == id) {ret = i; $break;}
+		if (item.uuid == id) {ret = i; $break;}
 	});
 	return ret;
 }
@@ -69,15 +71,10 @@ function resize(){
 function selOpt(list, fld){
 	var ret={};
 	list.each(function (item, i){
-							ret[i] = item.data[fld];
+							ret[i] = item[fld];
 						})	
 	return ret;
 }
-
-function crnt(wp){
-	return wp.list[wp.i];
-}
-
 
 //формирование формы
 //ctl - шаблон формы 
@@ -175,14 +172,18 @@ function showSelector(wp, container, position) {
 	wp.list(function(list){
 		new Selectable({
 			options: selOpt(list,"name"),
-			selected: idxById(list, wp.id) ,
+			selected: idxById(list, wp.uuid) ,
 		}).hide()
 		.addClass("nav-panel-selector")
 		//обработчик выбора
 		.delegate('click', 'li', function(){
 				var j = this._value;
 				this.parent().remove();
-				wp.new(list[j]).display();
+				if (wp.uuid == list[j].uuid) {
+					wp.display();
+				} else {
+					wp.new(list[j]).display();
+				};
 			}
 		)
 		.insertTo(container).moveTo(position).show();
@@ -201,7 +202,7 @@ function makeNavPanel(wp) {
 	//клон шаблона	
 	var nav = $('nav-panel-template').clone().show();
 	//обработка заголовка
-	var ttl = nav.first('.title').text(wp.data.name)
+	var ttl = nav.first('.title').text(wp.name)
 		.on('click', function(){
 				wp.display();
 			}); //заголовок 
@@ -229,7 +230,9 @@ function displayNav(wp, toolItems){
 	$('nav-panels').insert(makeNavPanel(wp));
 //Панели активных лементов
 	$("tool-panels").clean();
-	$('tool-panels').append(makeToolPanel(wp, toolItems));			
+	$('tool-panels').append(
+		$E('div',{class:"tool-panel"}).insert(ToolItem.composeList(toolItems))
+	);			
 	//ресайз
 	resize();	
 }
@@ -252,59 +255,38 @@ ToolItem.compose = function(toolItem){
 ToolItem.composeList = function(toolItems){
 	return toolItems.map(ToolItem.compose);
 }
-
-
-//стандартный композатор элемента
-//container - контейнер для элементов, 
-//item - описание элемента {name:<имя элемента>, callback:<обработчик активации элемента>} 
-//i - порядковый номер элемента
-//function stdToolItemComposer(item, i){
-//	return $E('span',{class:"button"})
-//		.on('click', function(){item.callback();})
-//		.text(item.name);
-//}
-//итератор композатором по списку элементов  
-//container - контейнер для элементов, 
-//toolItems - список описаний элементов, 
-//function makeToolItems(toolItems) {
-//	return container.insert(
-//		toolItems.map(function(item, i){item.composer(item, i)})
-//	);	
-//}
-
 //===========================================
-
-
-//Наполнение списка строками на основе данных
-//container - Элмент - контейнер для списка, 
-//list - массив записей, 
-//lineComposer - функция формирования элемента строки списка
-function fillList(container, list, lineComposer){
-//получаем массив скомпонованных элементов 
-	var elements = list.map(lineComposer).filter(function(item, i){return defined(item)});
-//вставка 
-	container.clean().insert(elements);
-}
-
-
 //Композитор набора строк таблицы
 //cols - описание колонок [{nm:<имя поля>,
 //									 cls:<значене для аттрибура class ячейки>, - необяз.
 //									 clsList:[<имя класса>]}], - необяз.
 //dtlCol - имя поля с подробностями,
 //list - список записей данных, 
-//rowClassComposer - функция возвращающая имя сласса для строки, 
-//toolItemsComposer - функция возвращающая набор активных элементов для строки, 
-function makeRowSet(cols, dtlCol, list, rowClassComposer, toolItemsComposer) {
+//rowClassProvider - функция возвращающая имя сласса для строки, 
+//toolItemsProvider - функция возвращающая набор активных элементов для строки, 
+function makeRowSet(cols, dtlCol, list, rowClassProvider, toolItemsProvider) {
 	//подготовка каталога колонок
 	cols.walk(function(col,i){
 		if (!defined(col.cls)) {
 			col.cls = ["cell"].merge([col.nm],col.clsList).join(" ");
 		}
+		return col;
 	});
+	if (!defined(toolItemsProvider)) {toolItemsProvider = function(){return [];}}
+	if (!defined(rowClassProvider)) {rowClassProvider = function(){return [];}}
+	else if (isString(rowClassProvider)) {rowClassProvider=$w(rowClassProvider);}
+	if (!isFunction(toolItemsProvider)) {
+		var vti = toolItemsProvider;
+		toolItemsProvider = function(){return vti;}
+	}
+	if (!isFunction(rowClassProvider)) {
+		var vrc = rowClassProvider;
+		rowClassProvider = function(){return vrc;}
+	}
+	//формирование результата
 	return list.map(function(row, i){
 			return makeRow(
-				cols, dtlCol, row, i, rowClassComposer(row), toolItemsComposer(row)
+				cols, dtlCol, row, i, rowClassProvider(row), toolItemsProvider(row)
 			);
 		})
 }
@@ -316,22 +298,43 @@ function makeRowSet(cols, dtlCol, list, rowClassComposer, toolItemsComposer) {
 //rowId - ид строки анных, 
 //rowClass - массив имен классов для строки таблицы, 
 //toolItems - массив активных элементов
-function makeRow(cols, dtlCol, row, rowId, rowClass, toolItems) {
+function makeRow(cols, dtlCol, row, rowId, rowClass, toolItems, formGen) {
+	var tp = ToolItem.composeList(toolItems);
 	//Формирование лементов
-	return $E("div",{
+	var cont = $E("div",{
 			class:["row"].merge(rowClass).join(" ")
 			,title:row[dtlCol]
-		})
-		//верхняя часть
-		.append($E("div", {class:"fieldSet",row_id:rowId}).insert(
-			cols.map(function(col, i){
-				return $E("span",{
-							class:col.cls
-						})
-						.text(row[col.nm]);
-			})
-		))
-		//нижняя часть
-		.append($E("div").insert(ToolItem.composeList(toolItems)));
+			,checked: false
+		});
+	var handle = $E("div",{class:"row-handle"}).insertTo(cont);
+	//обавим маркировку
+	handle.append(
+		$E("span",
+			{class:"checkbox"
+				,onClick:function(evt) {
+					if (cont.checked) {this.text="(-)"; cont.checked = false;}
+					else {this.text="(*)"; cont.checked = true;}
+				}
+			}
+		).text("(*)")
+	);
+	if (defined(formGen)) {
+		handle.append($E("span",{class:"button"}).text("+"));
+	} 
+		.append($E("div",{class:"row-body"})
+			//верхняя часть
+			.append($E("div", {class:"fieldset", row_id:rowId}).insert(
+				cols.map(function(col, i){
+					return $E("span",{
+								class:col.cls
+							})
+							.text(row[col.nm]);
+				})
+			))
+			//средняя часть - форма
+			//нижняя часть
+			.append($E("div").insert( tp ))
+		)
+		;
 }
 

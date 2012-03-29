@@ -126,7 +126,6 @@
 					</select>
 				</div>
 				<input type="hidden" name="ruleset" value="despot"></input>
-				<input type="hidden" name="user_id"></input>
 				<div class="field">
 					<span class="label">Имя на проекте:</span><input type="text" name="user_name"></input>
 				</div>
@@ -136,10 +135,9 @@
 			</form>
 		</div>
 
-<!--Шаблон формы создания проекта-->
+<!--Шаблон формы создания мероприятия-->
 		<div id="new-activity-template" style="display:none">
 			<form method="POST" >
-				<input type="hidden" name="psid" value="despot"></input>
 				<div class="field"><span class="label">Название:</span>
 					<input type="text" name="name"></input>
 				</div>
@@ -154,6 +152,35 @@
 				</div>
 			</form>
 		</div>
+
+<!--Шаблон формы создания мероприятия-->
+		<div id="new-resource-template" style="display:none">
+			<form method="POST" >
+				<div class="field"><span class="label">Название:</span>
+					<input type="text" name="name"></input>
+				</div>
+				<div class="field"><span class="label">Описание:</span>
+					<input type="text" name="descr"></input>
+				</div>
+				<div class="field"><span class="label">ед.измерения:</span>
+					<input type="text" name="units" ></input>
+				</div>
+				<div class="field"><span class="label">Способ использования:</span>
+					<select name="use">
+						<option value="personal" selected="selected" >Индивидуально</option>
+						<option value="common">Совместно</option>
+					</select>
+				</div>
+				<div class="field"><span class="label">Принадлежность:</span>
+					<select name="site">
+						<option value="external" selected="selected" >Требуется заказ</option>
+						<option value="internal">Свой</option>
+					</select>
+				</div>
+
+			</form>
+		</div>
+
 
 <!--Шаблон формы входа на открытый проект-->
 		<div id="enter-project-template" style="display:none">
@@ -206,6 +233,22 @@
 			<div class="title"></div>
 			<div class="tool-panel"></div>
 		</div>		
+
+<!--Шаблон включения ресурса-->
+		<div id="include-resource-template" style="display:none">
+			<form method="POST" >
+				<div class="field">
+					<span class="label">Обязательный:</span><input type="checkbox" name="need"></input>
+				</div>
+				<div class="field">
+					<span class="label">Количество:</span><input type="text" name="amount"></input>
+				</div>
+				<div class="field">
+					<span class="label">Коментарии:</span><input type="text" name="comment"></input>
+				</div>
+			</form>	
+		</div>		
+
 
 <!--Шаблон формы обновления данных участника-->
 		<div id="edit-participant-template" style="display:none">

@@ -1,10 +1,11 @@
 /* Общие */
 body {
-	background: #800000;
+	background: #111111;
 /*	margin-left: 200px;
 	margin-top: 150px; */
 	font-size: small;
 	min-height: 22em;
+	color: #00AA00;
 }
 
 input {
@@ -38,7 +39,7 @@ label {
 	left: 0;
 	top: 0;	
 	bottom: 0;
-	background: #C05000;
+	background: #141111;
 	margin: 2px;
 	min-height: 22em;
 }
@@ -46,7 +47,7 @@ label {
 #user-block {
 	height: 9em; 
 	width:  100%;
-/*	border-bottom: medium dotted black; */  	
+/*	border-bottom: medium dotted ; */  	
 }
 #user-data {
 }
@@ -63,8 +64,8 @@ label {
 	width: 92%;
 	top: 6em;
 	height: 2.8em;
-	border-top: medium dotted black;	
-	border-bottom: thin solid black;
+	border-top: medium dotted ;	
+	border-bottom: thin solid ;
 }
 
 /* контент левого блока*/
@@ -81,7 +82,7 @@ label {
 }
 #left-footer{
 	width: 13em;
-	border-top: medium dotted black;
+	border-top: medium dotted ;
 }
 
 
@@ -103,11 +104,11 @@ label {
 	display: block;
 	position: fixed;
 	z-index: 2;
-	background: #800000;	
+	background: #EEEEEE;	
 }
 
 .tool-panel {
-	border-bottom: thin solid black;
+	border-bottom: thin solid ;
 }
 /* поле контента */
 #content-block {
@@ -178,7 +179,22 @@ label {
 
 .row{
 	display: block;
+	border: thin groove gray;
+	border-radius: 6px/3px; 
+	margin: 1px;	
+	padding-left: 1.2em;
+}
+.row-handle {
+	display: table-cell;
+}
+.row-body {
+	display: table-cell;
+	width: 100%;
+}
+
+.fieldset{
 	cursor: pointer;
+	display: block
 }
 .cell{
 	padding-left: 1px;
@@ -201,6 +217,11 @@ label {
 }
 .row .status{
 	width: 10%;
+}
+
+
+.part-list-row .name{
+	width: 95%;
 }
 
 
