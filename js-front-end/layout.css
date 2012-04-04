@@ -27,6 +27,11 @@ label {
 .button {
 	cursor: pointer;
 	padding: 1px;
+	margin: 1px;
+	border: thin solid gray;
+	border-radius: 4px;
+	font-size: smaller;
+	background-color: #444444;
 }
 .title {
 	font-style: oblique;
@@ -209,20 +214,20 @@ label {
 	width: 22em;
 	font-weight: bold;
 }
+.row .amount_d{
+	width: 6em;
+}
 .row .date{
 	width: 6em;
 }
-
 .row .descr{
 	width: 100%;
 	max-height: 1.3em;
 	overflow: hidden;
 }
-.row .role{
-	width: 8em;
-}
-.row .status{
-	width: 8em;
+.row .status_d{
+	min-width: 3em;
+	text-decoration: underline;
 }
 
 

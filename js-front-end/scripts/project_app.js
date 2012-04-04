@@ -1,7 +1,7 @@
 var projectStatusList = {opened:"Создан",planning:"Планирование",contractor:"Выбор предложения",bubget:"бюджетирование",control:"контроль",closed:"закрыт"};
 var actStatusList = {created:"Формируется",voted:"Предложено",accepted:"Принято",deniing:"Отменяется",denied:"Отменено"};
 var partStatusList = {voted:"Принимается",accepted:"Действующий",denied:"Исключен"};
-
+var resUseList={personal:"индивидуально",common:"общий"};
 
 //Новый проект
 //svc - данные сервиса
@@ -378,19 +378,6 @@ function refreshPartList(list, container, prj){
 				if (rowData.status == "voted") {result.push("voted");}
 				return result.join(" ");
 			}
-/*			,toolItemsProvider: function(rowData){
-				var toolItems=[];
-				if (rowData.status == "accepted") {
-					toolItems.push(new ToolItem("Исключить", Part.exclude.curry(prj,rowData.uuid)));
-//					toolItems.push(new ToolItem("Исключить", kickoutPart.curry(prj,rowData)));
-				}
-				if (rowData.status == "voted") {
-					toolItems.push(new ToolItem("Принять", Part.include.curry(prj,rowData.uuid)));
-					toolItems.push(new ToolItem("Не принимать", Part.exclude.curry(prj,rowData.uuid)));
-				}
-				return toolItems;
-			}
-*/
 		}
 	);
 	if (!container.delegates('click', 'div.fieldset')) {
@@ -441,9 +428,26 @@ function refreshActList(list, container, prj) {
 	makeRowSet(container,
 		//Каталог полей
 		[
-			{name:"name"
+			{name:"part"
+				,classList:["button"]
+				,popupProvider:function(rowData, rowId) {
+					var texts = [rowData.descr,"Время:" ,"Участники:", "Используются:"];
+					var toolItems = [];
+					if (!rowData.participant) {
+						toolItems.push(new ToolItem("Участвовать.", Act.participate.curry(prj, "include", rowData.uuid)));
+						texts.push("-------------");	
+						texts.push("Вы еще не являетесь участником");	
+					} else {
+						toolItems.push(new ToolItem("Не участвовать.", Act.participate.curry(prj, "exclude", rowData.uuid)));
+						texts.push("-------------");	
+						texts.push("Вы уже являетесь участником");	
+					}
+					return makeDialog(rowData.name, texts, toolItems);
+				}
+			}
+			,{name:"name"
 				,popupProvider:function(rowData, rowId){
-					return $E("span").text(rowData.descr);
+					return rowData.descr;
 				}
 				,onClick:function(rowData, rowId, elt, evt){ 
 						new Act(prj, rowData).display();
@@ -454,29 +458,29 @@ function refreshActList(list, container, prj) {
 			,{name:"status_d"
 				//провайдер формы деталей по статусу
 				,popupProvider:function(rowData, rowId){
-					if ((rowData.status == "accepted") && (rowData.votes.length == 0)) {return false;} //false, если нет предложений
-					var variants;
-					if (rowData.status == "voted") {
-						variants = [{
-							vote: "include"
-							, text: "согласны включить мероприятие"
-							,toolItem: new ToolItem("Включить", Act.accept.curry(prj, rowData.uuid))
-						},{
-							vote:"exclude"
-							,text:"против мероприятия"
-							,toolItem: new ToolItem("Не включить", Act.deny.curry(prj, rowData.uuid))
-						}];
-						return makeOpenVotingDialog(variants, rowData.votes, prj.partList.data);
-					} else if (rowData.status == "accepted") {
-						variants = [{
-							vote:"exclude"
-							, text:"согласны отменить мероприятие"
-							,toolItem: new ToolItem("Отменить", Act.deny.curry(prj, rowData.uuid))
-						},{
-							vote:"include"
-							, text:"против отмены"
-							,toolItem: new ToolItem("Не отменять", Act.accept.curry(prj, rowData.uuid))
-						}];
+					if (rowData.votes.length > 0) {
+						var variants;
+						if (rowData.status == "voted") {
+							variants = [{
+								vote: "include"
+								, text: "согласны включить мероприятие"
+								,toolItem: new ToolItem("Включить", Act.accept.curry(prj, rowData.uuid))
+							},{
+								vote:"exclude"
+								,text:"против мероприятия"
+								,toolItem: new ToolItem("Не включить", Act.deny.curry(prj, rowData.uuid))
+							}];
+						} else if (rowData.status == "accepted") {
+							variants = [{
+								vote:"exclude"
+								, text:"согласны отменить мероприятие"
+								,toolItem: new ToolItem("Отменить", Act.deny.curry(prj, rowData.uuid))
+							},{
+								vote:"include"
+								, text:"против отмены"
+								,toolItem: new ToolItem("Не отменять", Act.accept.curry(prj, rowData.uuid))
+							}];
+						}
 						return makeOpenVotingDialog(variants, rowData.votes, prj.partList.data);
 					} else if (rowData.status == "created") {
 						return makeDialog("Новое мероприятие"
@@ -486,7 +490,13 @@ function refreshActList(list, container, prj) {
 								,new ToolItem("Удалить", Act.delete.curry(prj, rowData.uuid))
 							]
 						);
-					}
+					} else if (rowData.status == "accepted") {
+						return makeDialog(rowData.name
+							,[rowData.descr]
+							,[	new ToolItem("Отменить", Act.deny.curry(prj, rowData.uuid)) ]
+						);
+					} else {
+					}					
 				} 
 			},{
 				name:"descr"
@@ -499,6 +509,7 @@ function refreshActList(list, container, prj) {
 			if ((act.status == "accepted") && (act.votes.length > 0) || (act.status == "voted")) {act.status_d = "????"; }
 			else if (act.status == "created") {act.status_d = "Невиден";}
 			else {act.status_d = "****";}
+			if (act.participant) {act.part = "Участвую";} else {act.part = "Не участвую";}
 			return act;
 		})
 		//опции
@@ -507,36 +518,6 @@ function refreshActList(list, container, prj) {
 				var result = ["act-list-row", rowData.status];
 				return result.join(" ");
 			}
-
-/*
-			//активны элементы
-			toolItemsProvider: function(rowData){
-				var toolItems = []; var rA = function(){} ;
-				switch (rowData.status){
-					case "created":
-						toolItems.push(new ToolItem("Предложить", Act.public.curry(prj, rowData.uuid)));
-						toolItems.push(new ToolItem("Удалить", Act.delete.curry(prj, rowData.uuid)));
-						break;
-					case "voted":
-						toolItems.push(new ToolItem("Включить", Act.accept.curry(prj, rowData.uuid)));
-						toolItems.push(new ToolItem("Не нужно", Act.deny.curry(prj, rowData.uuid)));
-						break;
-					case "accepted":
-						if (rowData.votes.length == 0){toolItems.push(new ToolItem("Убрать.", Act.deny.curry(prj, rowData.uuid)));}
-						if (!rowData.participant) {
-							toolItems.push(new ToolItem("Участвовать.", Act.participate.curry(prj, "include", rowData.uuid)));
-						} else {
-							toolItems.push(new ToolItem("Не участвовать.", Act.participate.curry(prj, "exclude", rowData.uuid)));
-						}
-				}
-				toolItems.push(new ToolItem("Подробнее...", 
-					function(){
-						new Act(prj, rowData).display();
-					}
-				));
-				return toolItems;
-			}
-*/
 		}
 	)
 }	
@@ -602,7 +583,13 @@ function refreshResList(list, container, prj) {
 	//запрос
 	//обработка списка
 	makeRowSet(container,
-		[{name:"name"},{name:"amount"},{name:"units"}]
+		[{
+			name:"name"
+		},{
+			name:"amount"
+		},{
+			name:"units"
+		}]
 		,list
 		,{}
 	)
@@ -741,7 +728,7 @@ function includeResource(res, act, cbCancel){
 			,"параметры включения ресурса" //заголовок формы
 			//обработка сабмита
 			,function(evt, form){
-				res.addTo(act, form.values(), function(resp){
+				res.includeTo(act, form.values(), function(resp){
 					act.display();
 				});
 			} 
@@ -783,10 +770,69 @@ function refreshActResList(list, container, act) {
 	//запрос
 	//обработка списка
 	makeRowSet(container,
-		[{name:"name"},{name:"amount"},{name:"units"},{name:"use"}]
-		,list
+		[{
+			name:"name"
+		},{
+			name:"amount_d"
+		},{
+			name:"use_d"
+		},{
+			name:"status_d"
+			,popupProvider: function(rowData, rowId) {
+					if (rowData.votes.length > 0) {
+						var variants;
+						if (rowData.status == "voted") {
+							variants = [{
+								vote: "include"
+								, text: "согласны включить ресурс"
+								,toolItem: new ToolItem("Включить", Res.includeTo.curry(
+									act,{	psid:act.parent.psid, uuid:rowData.uuid, activity:act.uuid}
+//											,need:rowData.need, amount:rowData.amount}
+								))
+							},{
+								vote:"exclude"
+								,text:"против использования"
+								,toolItem: new ToolItem("Не включить", Res.exclude.curry(act, rowData.uuid))
+							}];
+						} else if (rowData.status == "accepted") {
+							variants = [{
+								vote:"exclude"
+								, text:"согласны отказаться от "+rowData.name
+								,toolItem: new ToolItem("Отказаться", Res.exclude.curry(act, rowData.uuid))
+							},{
+								vote:"include"
+								, text:"не желают отказываться от "+rowData.name
+								,toolItem: new ToolItem("Включить", Res.includeTo.curry(
+									act,{	psid:act.parent.psid, uuid:rowData.uuid, activity:act.uuid}
+//											,need:rowData.need, amount:rowData.amount}
+								))
+							}];
+						}
+						return makeOpenVotingDialog(variants, rowData.votes, act.parent.partList.data);
+					} else if (rowData.status == "accepted") {
+						return makeDialog(rowData.name
+							,[rowData.descr]
+							,[	new ToolItem("Убрать", Res.exclude.curry(act, rowData.uuid)) ]
+						);
+					} else {
+					}					
+			}
+		},{
+			name:"descr"
+		}]
+		,list.map(function(rowData, i){
+			rowData.use_d = resUseList[rowData.use];
+			rowData.amount_d = rowData.amount+" "+rowData.units;
+			if ((rowData.status == "accepted") && (rowData.votes.length > 0) || (rowData.status == "voted")) {rowData.status_d = "????"; }
+			else {rowData.status_d = "****";}
+			return rowData;
+		})
 		,{
-			toolItemsProvider: function(rowData){
+			rowClassProvider: function(rowData) {
+				var result = ["res-list-row", rowData.status];
+				return result.join(" ");
+			}
+/*			toolItemsProvider: function(rowData){
 				var toolItems = [];
 				switch (rowData.status){
 					case "voted":
@@ -798,6 +844,7 @@ function refreshActResList(list, container, act) {
 				}
 				return toolItems;
 			}
+*/			
 		}
 	)
 }	

@@ -478,12 +478,15 @@ var Res = new Class(AO, {
 		this.parent = prj;
 		this.$super(fields);
 	}
-	,addTo:function(act, values, continuation){
+	,includeTo: function(act, values, continuation) {
 		values.psid = this.parent.psid;
 		values.uuid = this.uuid;
 		values.activity = act.uuid;
 		if (defined(values.need)) {values.need = true;} else {values.need = false;}
-		Res.addTo(act, values, continuation);
+		Res.includeTo(act, values, continuation);
+	}
+	,exclude:function(act, continuation){
+		Res.exclude(act, this.uuid, continuation);
 	}
 });
 
@@ -515,9 +518,8 @@ Res.exclude = function(act, uuid, continuation){
 	);
 }
 
-Res.addTo = function(act, values, continuation){
+Res.includeTo = function(act, values, continuation){
 //	{psid:act.parent.psid, uuid:uuid, activity:act.uuid, need:mandatory, amount:amount, comment:comment},
-
 	apost("/activity/resource/include",
 		values,
 		function(resp, isOk, r) {
