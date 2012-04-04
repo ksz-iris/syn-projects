@@ -256,85 +256,331 @@ ToolItem.composeList = function(toolItems){
 	return toolItems.map(ToolItem.compose);
 }
 //===========================================
+
+//*****************************************
+//Popup
+function makePopup(content, position, element) {
+//	var timer;
+	var popup = $E("div",
+		{	class:"popup" 
+			,onmouseout:function(evt){
+				if (popup.get("captured")=="true") {
+					element.timer = function(){
+						popup.remove();
+						element.set("poped", "false")
+					}.delay(600);
+				}
+//				evt.stop();
+			}
+			,onmouseover:function(evt){
+				element.timer.cancel(); 
+				popup.set("captured", "true");
+//				evt.stop();
+			}
+		}
+	);
+	element.parent().append(popup);
+	if (isString(content)) {
+		popup.text(content);
+	} else {
+		popup.insert(content);
+	}
+	if (popup.size().x > ($(window).size().x / 2) ) {popup.setWidth(($(window).size().x / 2).ceil()-10)}
+	if (popup.size().y > ($(window).size().y / 2) ) {popup.setWidth(($(window).size().y / 2).ceil()-10)}
+	if ((position.y+popup.size().y) > $(window).size().y) { position.y -= (popup.size().y + 10);}
+	if ((position.x+popup.size().x) > $(window).size().x) { position.x -= (popup.size().x + 10);}
+	popup.moveTo(position).show();
+	element.set("poped", "true");	
+	return popup;
+}
+
+function popup(content, position, element) {
+	element.timer = function(){
+		if (isFunction(content)) {content = content();} 
+		if ((element.get("poped")!="true") && content) {
+			var popup = makePopup(content, position, element);
+
+			element.on("mouseout",function(evt){
+				element.timer = function(){
+					if (element.get("captured") != "true" ) {
+						popup.remove()
+						element.set("poped", "false")
+					};
+				}.delay(1000);
+			});
+
+		}
+	}.delay(2000);		
+	element.on("mouseout",function(evt){
+		clearTimeout(element.timer); 
+		evt.stop();
+	})
+}	
+
+
+//===========================================
+
+//*****************************************
 //Композитор набора строк таблицы
-//cols - описание колонок [{nm:<имя поля>,
-//									 cls:<значене для аттрибура class ячейки>, - необяз.
-//									 clsList:[<имя класса>]}], - необяз.
-//dtlCol - имя поля с подробностями,
+//cols - описание колонок [{name:<имя поля>,
+//									 clsList:[<имя класса>]
+//									 onClick:function(evt, elt, row, rowId)
+//									 popupProvider:function(row, rowId)}], - необяз.
 //list - список записей данных, 
+//options = {
 //rowClassProvider - функция возвращающая имя сласса для строки, 
-//toolItemsProvider - функция возвращающая набор активных элементов для строки, 
-function makeRowSet(cols, dtlCol, list, rowClassProvider, toolItemsProvider) {
+//toolItemsProvider - функция возвращающая набор активных элементов для строки,
+
+//}
+function makeRowSet(container, cols, list, options) {
+	var rowOptions = {};
 	//подготовка каталога колонок
 	cols.walk(function(col,i){
-		if (!defined(col.cls)) {
-			col.cls = ["cell"].merge([col.nm],col.clsList).join(" ");
+		col.class = "cell ".concat([col.name]);
+		if (defined(col.classList)) {
+			col.class = ["cell"].merge([col.name],col.classList).join(" ");
 		}
 		return col;
 	});
-	if (!defined(toolItemsProvider)) {toolItemsProvider = function(){return [];}}
-	if (!defined(rowClassProvider)) {rowClassProvider = function(){return [];}}
-	else if (isString(rowClassProvider)) {rowClassProvider=$w(rowClassProvider);}
-	if (!isFunction(toolItemsProvider)) {
-		var vti = toolItemsProvider;
-		toolItemsProvider = function(){return vti;}
-	}
-	if (!isFunction(rowClassProvider)) {
-		var vrc = rowClassProvider;
-		rowClassProvider = function(){return vrc;}
-	}
+
 	//формирование результата
-	return list.map(function(row, i){
-			return makeRow(
-				cols, dtlCol, row, i, rowClassProvider(row), toolItemsProvider(row)
-			);
-		})
+	container.clean().insert(list.map(function(row, i){ 
+		rowOptions = {};
+		//Класс строки
+		if (isFunction(options.rowClassProvider)) {rowOptions.rowClass = options.rowClassProvider(row);}
+		else if (isArray(options.rowClassProvider)) {rowOptions.rowClass = options.rowClassProvider.join(" ");}
+		else {rowOptions.rowClass = options.rowClassProvider;}
+		//активные элементы
+		if (isFunction(options.toolItemsProvider)) {rowOptions.toolItems = options.toolItemsProvider(row)}
+		else {rowOptions.toolItems = options.toolItemsProvider;}
+		rowOptions.formGenerator = options.formGenerator;
+		//Строка
+		return makeRow(cols, row, i, rowOptions);
+	}))
+	//Обработка onCick ячеек
+	if (container.delegates('click', '.cell')) {container.undelegate('click', '.cell');}
+	container.delegate('click','.cell',function(evt,p1){
+			cols.each(function(col,i){
+				//вызываем обработчики для ячеек в колонкас с преоставленными обработчиками
+				if (col.name == this.get('col_id')) {
+					if (col.onClick) {
+						col.onClick(list[this.get('row_id')], this.get('row_id'), this, evt);
+					} else if (col.popupProvider && (this.get("poped") != "true")) {
+						var popupContent = col.popupProvider;
+						if (isFunction(popupContent)) {
+							popupContent = popupContent(list[this.get('row_id')] ,this.get('row_id'))
+						}
+						if (popupContent) {
+							var popup = makePopup(popupContent, evt.position(), this);
+							this.on("mouseout", function(evnt){
+								var timer = function(){
+									if (popup.get("captured") != "true") {
+										popup.remove();
+										this.set("poped", "false");
+									};
+								}.bind(this).delay(1000);
+							});
+						}
+					}
+				}	
+			}.bind(this))			
+	});
+	//Обработка задержки курсора на ячейках	
+	if (container.delegates('mouseover', '.cell')) {container.undelegate('mouseover', '.cell');}
+	container.delegate('mouseover','.cell',function(evt,p1){
+			cols.each(function(col,i){
+				if ((col.name == this.get('col_id')) && col.popupProvider) {
+					popup(col.popupProvider.curry(list[this.get('row_id')] ,this.get('row_id'))
+							,evt.position(),this);					
+				}				
+			}.bind(this));
+	});
 }
 //Композитор строки таблицы
-//cols - массив описаний колонок [{nm:<имя поля>,
-//									 		  cls:<значене для аттрибура class ячейки>}],
+//cols - массив описаний колонок [{name:<имя поля>,
+//									 		  cls:<значене для аттрибура class ячейки>,
+//											  hintGenerator:function(row)->Element/[Element]}],
 //dtlCol - имя поля с подробностями,
 //row - строка данных (структура), 
 //rowId - ид строки анных, 
-//rowClass - массив имен классов для строки таблицы, 
-//toolItems - массив активных элементов
-function makeRow(cols, dtlCol, row, rowId, rowClass, toolItems, formGen) {
-	var tp = ToolItem.composeList(toolItems);
+//options{
+//	rowClass, 
+//	toolItems, 
+//	checkable
+//}	
+function makeRow(cols, row, rowId, options) {
+	var e; 
 	//Формирование лементов
 	var cont = $E("div",{
-			class:["row"].merge(rowClass).join(" ")
-			,title:row[dtlCol]
+			class:"row"
+			,row_id: rowId
 			,checked: false
+			,expanded: false
 		});
+	if (defined(options.rowClass)) {cont.setClass("row ".concat(options.rowClass));}
+//	if (defined(options.hint)) {cont.title = options.hint;}
 	var handle = $E("div",{class:"row-handle"}).insertTo(cont);
-	//обавим маркировку
-	handle.append(
-		$E("span",
-			{class:"checkbox"
-				,onClick:function(evt) {
-					if (cont.checked) {this.text="(-)"; cont.checked = false;}
-					else {this.text="(*)"; cont.checked = true;}
-				}
-			}
-		).text("(*)")
-	);
-	if (defined(formGen)) {
-		handle.append($E("span",{class:"button"}).text("+"));
-	} 
-		.append($E("div",{class:"row-body"})
-			//верхняя часть
-			.append($E("div", {class:"fieldset", row_id:rowId}).insert(
-				cols.map(function(col, i){
-					return $E("span",{
-								class:col.cls
-							})
-							.text(row[col.nm]);
-				})
-			))
-			//средняя часть - форма
-			//нижняя часть
-			.append($E("div").insert( tp ))
-		)
-		;
+	//добавим маркировку
+	if (defined(options.checkable)) {
+		e = $E("span",{class:"checkbox"}).text("(_)");
+		if (options.checkabe) {
+			e.on('click', function(evt) {
+				if (cont.checked) {this.text="(-)"; cont.checked = false;}
+				else {this.text="(*)"; cont.checked = true;}
+			});
+		}		
+		handle.append(e);
+	}
+	var body = $E("div",{class:"row-body"}).insertTo(cont);
+	//верхняя часть
+	body.append($E("div", {class:"fieldset", row_id:rowId}).insert(
+		cols.map(function(col, i){
+			var cell = $E("span",{
+				class:col.class
+				,row_id:rowId
+				,col_id:col.name
+			}).append($E("span",{class:"cell-text"}).text(row[col.name]));
+			return cell;
+		})
+	));
+	//нижняя часть
+	if (isArray(options.toolItems)) {
+		body.append($E("div").insert( ToolItem.composeList(options.toolItems) ));
+	}
+	return cont;
+
 }
 
+//********************************************
+//                Диалоги
+//*******************************************
+//Просто диалог
+function makeDialog(title, texts,toolItems){
+	return [
+		$E("div", {class:"dialog-title"}).text(title),
+		$E("div", {class:"dialog-body"}).insert(
+			texts.map(function(text,i){
+				return $E("p").text(text)
+			})
+		),
+		$E("div", {class:"dialog-tools"}).insert(
+			ToolItem.composeList(toolItems)
+		)
+	];
+}
+
+//***********************************************
+//Открытое голосование:
+//variants:[
+//  {<vote>,<text>,<toolItem>}
+//]
+//votes [{<uuid>, <vote>,...}]
+//participants: [{<uuid>,<name>,...}]
+function makeOpenVotingDialog(variants, votes, participants) {
+	var voters = votes.distribute(	
+		variants.map(function(variant, i){
+			return function(vote, i){
+				return vote.vote == variant.vote
+			};	
+		})
+	).map(function(voting, i){
+		return voting.map(function(vote, j){
+			return participants.first(function(part, k){
+				return part.uuid == (vote.voter || vote.uuid);
+			}).name;
+		});
+	});
+	
+	var texts = []; toolItems = [];
+
+	variants.each(function(variant,i){
+		texts.push("Участники: "+voters[i].join(","));
+		texts.push(variant.text);
+		toolItems.push(variant.toolItem);
+	});	
+	return makeDialog("Голосование", texts, toolItems);
+}
+
+
+//**********************************************
+//                  Misc
+//*********************************************
+function pile(arrayRec){
+	var keys = arrayRec.keys();
+	var result = [];
+	var row = {};
+	var rest = true;
+	while (rest) {
+		rest = false;
+		row = {};
+		keys.each(function(key,i){
+			if (arrayRec[key].length > 0) {
+				row[key] = arrayRec[key].shift();
+				rest = true;
+			}
+		})
+		if (rest) {result.push(row);} 
+	}
+	return result;	
+}
+
+
+Array.include({
+	//devide this array to destinations
+	distribute:function(checks){
+		var result = checks.map(function(){return [];});
+		this.each(function(item, i){
+			checks.each(function(check,j){
+				if (check(item,i)) {
+					result[j].push(item);
+				}
+			})
+		});
+		return result;
+	}
+})
+
+
+function _zerofy(number) {
+  return (number < 10 ? '0' : '') + number;
+}
+function format(_date, format) {
+    var i18n   = Calendar.i18n;
+    var day    = _date.getDay();
+    var month  = _date.getMonth();
+    var date   = _date.getDate();
+    var year   = _date.getFullYear();
+    var hour   = _date.getHours();
+    var minute = _date.getMinutes();
+    var second = _date.getSeconds();
+
+    var hour_ampm = (hour == 0 ? 12 : hour < 13 ? hour : hour - 12);
+
+    var values    = {
+      a: i18n.dayNamesShort[day],
+      A: i18n.dayNames[day],
+      b: i18n.monthNamesShort[month],
+      B: i18n.monthNames[month],
+      d: _zerofy(date),
+      e: ''+date,
+      m: (month < 9 ? '0' : '') + (month+1),
+      y: (''+year).substring(2,4),
+      Y: ''+year,
+      H: _zerofy(hour),
+      k: '' + hour,
+      I: (hour > 0 && (hour < 10 || (hour > 12 && hour < 22)) ? '0' : '') + hour_ampm,
+      l: '' + hour_ampm,
+      p: hour < 12 ? 'AM' : 'PM',
+      P: hour < 12 ? 'am' : 'pm',
+      M: _zerofy(minute),
+      S: _zerofy(second),
+      '%': '%'
+    };
+
+    var result = format;
+    for (var key in values) {
+      result = result.replace('%'+key, values[key]);
+    }
+
+    return result;
+  }

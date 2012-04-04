@@ -24,7 +24,7 @@ var LiveData = new Class(Observer, {
 });
 
 LiveData.live = function (ld,delay) {
-	delay = delay || 60000;
+	delay = delay || 120000;
 	ld.getter(function(data, isOk, r){
 		if (isOk) {
 			ld.data = data;
@@ -53,9 +53,10 @@ LiveData.act = function (ld, callback) {
 var DataFarm = {
 	farm : {},
 	plant : function(id, getter, options) {
-		if (!defined(this.farm[id])) {
-			this.farm[id] = new LiveData(getter, options);
+		if (defined(this.farm[id])) {
+			this.farm[id].die();
 		}
+		this.farm[id] = new LiveData(getter, options);
 		return this.farm[id];  
 	} 
 }
@@ -262,8 +263,8 @@ var Part = new Class(AO,
 		this.$super(fields);
 	}	
 	,setData: function(values, continuation){ Part.setData(this.parent, values, continuation)}
-	,conform: function(continuation, comment){ Part.kickout(this.parent, this.uuid, continuation)}
-	,reject: function(continuation, comment){ Part.kickout(this.parent, this.uuid, continuation)}
+	,include: function(continuation, comment){ Part.include(this.parent, this.uuid, continuation)}
+	,exclude: function(continuation, comment){ Part.exclide(this.parent, this.uuid, continuation)}
 	,kickout: function(continuation, comment){ Part.kickout(this.parent, this.uuid, continuation, comment)}
 	
 });
@@ -292,7 +293,7 @@ Part.setData = function(prj, values, continuation) {
 		}		
 	);	
 }
-
+//Устаревшее
 Part.kickout = function(prj, uuid, continuation, comment) {
 	apost("/participant/exclude",
 		{psid:prj.psid, uuid:uuid, comment:comment},
@@ -306,7 +307,7 @@ Part.kickout = function(prj, uuid, continuation, comment) {
 //запрос на согласие на предложение по участнику
 //prj - данные проекта, 
 //uuid - код участника
-Part.conform = function (prj, uuid, continuation) {
+Part.include = function (prj, uuid, continuation) {
 	apost('/participant/vote/conform', 
 		{psid:prj.psid,uuid:uuid, vote:"include"}
 		,function(resp, isOk, r){
@@ -318,7 +319,7 @@ Part.conform = function (prj, uuid, continuation) {
 //запрос на несогласие на предложение по участнику
 //prj - данные проекта, 
 //uuid - код участника
-Part.reject = function (prj, uuid, continuation) {
+Part.exclude = function (prj, uuid, continuation) {
 	apost('/participant/vote/conform', 
 		{psid:prj.psid,uuid:uuid, vote:"exclude"}
 		,function(resp, isOk, r){
@@ -340,7 +341,7 @@ var Act = new Class(AO,
 			return new Act(this.parent, fields);
 		}
 	,list: function(continuation){
-			return this.parent.actList.data;
+			continuation(this.parent.actList.data.filter(function(item,i){return item.status != "denied"}) );
 //			Act.list(this.parent
 //				,continuation
 //			);
@@ -372,7 +373,10 @@ var Act = new Class(AO,
 			displayActivity(this);
 		}
 	,accept: function(comment, continuation){
-		Act.accept(this.parent, this.uuid, continuation, comment);	
+		Act.accept(this.parent, this.uuid, continuation);	
+	}
+	,public: function(comment, continuation){
+		Act.public(this.parent, this.uuid, continuation, comment);	
 	}
 	,deny: function(comment, continuation){
 		Act.deny(this.parent, this.uuid, continuation, comment);	
@@ -406,7 +410,17 @@ Act.create = function(prj, values, continuation) {
 	});
 }
 
-Act.accept = function(prj, uuid, continuation, comment) {
+Act.accept = function(prj, uuid, continuation) {
+	apost("/activity/public",
+		{psid:prj.psid, uuid:uuid},
+		function(resp, isOk, r) {
+			if (defined(continuation)) {continuation(resp, isOk, r)};
+			if (isOk) {prj.actList.act();}
+		}		
+	);
+}
+
+Act.public = function(prj, uuid, continuation, comment) {
 	apost("/activity/public",
 		{psid:prj.psid, uuid:uuid, comment:comment},
 		function(resp, isOk, r) {
