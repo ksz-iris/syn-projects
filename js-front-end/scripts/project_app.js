@@ -678,6 +678,10 @@ function showPrjResReport(prj) {
 				)
 				.insert(
 					part.resources.filter(function(item,i){return item.amount > 0;}).map(function(item, i){
+						if (item.min_cost) {item.min_cost = item.min_cost.round(2);}
+						if (item.max_cost) {item.max_cost = item.max_cost.round(2);}
+						if (item.mean_cost) {item.mean_cost = item.mean_cost.round(2);}
+						if (item.amount) {item.amount = item.amount.round(2);}
 						return $E("div",{style:"border thin dotted"})
 							.append($E("span",{style:"width:12em;display:inline-block;"}).text(item.name))
 							.append($E("span",{style:"width:22em;display:inline-block;"}).text(item.descr))
@@ -707,6 +711,10 @@ function showPrjResReport(prj) {
 				)
 				.insert(
 					resp.resources.filter(function(item,i){return item.amount > 0;}).map(function(item, i){
+						if (item.min_cost) {item.min_cost = item.min_cost.round(2);}
+						if (item.max_cost) {item.max_cost = item.max_cost.round(2);}
+						if (item.mean_cost) {item.mean_cost = item.mean_cost.round(2);}
+						if (item.amount) {item.amount = item.amount.round(2);}
 						return $E("div",{style:"border thin dotted"})
 							.append($E("span",{style:"width:12em;display:inline-block;"}).text(item.name))
 							.append($E("span",{style:"width:22em;display:inline-block;"}).text(item.descr))
