@@ -25,7 +25,7 @@ function newProject(svc, cbCancel){
 			} 
 			//обработка закрытияформы
 			,function(){
-				cbCancel;
+				cbCancel();
 			}
 		)
 	);
@@ -911,7 +911,7 @@ function refreshActResList(list, container, act) {
 function displayActivity(act) {
 //обновление 
 	var toolItems = [];
-	if (act.status == "accepted") {toolItems.push(new ToolItem(
+	if ((act.status == "accepted")||(act.status == "created")) {toolItems.push(new ToolItem(
 		"Новый ресурс", newResource.curry(
 			act.parent
 			, function(){

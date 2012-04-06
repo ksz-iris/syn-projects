@@ -131,7 +131,7 @@ label {
 	padding-bottom: 1.4em;
 }
 .form-holder .handle {
-	float: left;
+	text-align: center;
 }
 .form-holder .title {
 	text-align: right;
@@ -144,7 +144,7 @@ label {
 }
 .label{
 	display: inline-block;
-	width: 30%;
+	width: 50%;
 	text-align: right;
 }
 
@@ -158,6 +158,19 @@ label {
 }
 .list-holder .title {
 	text-align: right;
+	padding-bottom: 3px;
+}
+.title .button{
+	float: left;	
+}
+
+.list-holder .handle {
+	display: inline;
+}
+
+.list-holder .pager{
+	display: inline;
+	
 }
 .list-holder .content {
 	border-top: thin solid;
@@ -168,16 +181,6 @@ label {
 	bottom: 1.4em;
 	overflow-y: scroll;
 	max-height: 14em;
-}
-.list-holder .handle {
-	position: absolute; 
-	bottom: 0.1em;
-	left: 0.1em;
-}
-.list-holder .pager{
-	position: absolute;
-	bottom: 0.1em;
-	right: 1em;
 }
 
 

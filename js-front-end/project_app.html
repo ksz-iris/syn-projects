@@ -76,23 +76,25 @@
 		</div>
 <!--Шаблон контейнера формы-->	
 	<div id="form-holder-template" class="holder form-holder" style="display:none">
+<!--			<div class="handle">
+				<span class="button">V</span>
+				<span class="button">C</span>
+				<span class="button">X</span>
+			</div> -->		
 		<div class="title">title</div>
 		<div class="content"></div>		
-		<div class="handle">
-			<span class="button">V</span>
-			<span class="button">C</span>
-			<span class="button">X</span>
-		</div>		
 	</div>
 <!--Шаблон контейнера постраничного списка-->	
 	<div id="plist-holder-template" class="holder list-holder" style="display:none">
-		<div class="title">title</div>
-		<div class="content" ></div>
-		<div class="handle">
-			<span class="button refresh">O</span>
-			<span class="button setup" >S</span>
-			<span class="button close" >X</span>
+		<div>
+			<div class="title">title</div>
 		</div>
+		<div class="content" ></div>
+			<div class="handle">
+				<span class="button refresh">O</span>
+				<span class="button setup" >S</span>
+				<span class="button close" >X</span>
+			</div>
 		<div class="pager">
 			<span class="button prev">&lt</span>
 			<span class="page-num">1</span>
@@ -102,9 +104,8 @@
 
 <!--Шаблон контейнера списка-->	
 	<div id="list-holder-template" class="holder list-holder" style="display:none">
-		<div class="title">title</div>
+		<div class="title"><div class="handle"></div>title</div>
 		<div class="content"></div>
-		<div class="handle"></div>
 	</div>
 	
 <!--Шаблон формы создания проекта-->

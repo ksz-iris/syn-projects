@@ -92,13 +92,20 @@ function makeForm(ctl, id, title, sendCB, closeCB){
 	holder.first('.title').text(title);
 	
 	var form = holder.first('form');
-	var btn = holder.find('.button');
+//	var btn = holder.find('.button');
+	holder.append(
+		$E("div",{class:"handle"})
+			.append($E("button").on('click', sendCB, form).text("Ok"))
+//			.append($E("button").on('click', function(){form.reset();}).text("Сброс"))
+			.append($E("button").on('click', closeCB, form).text("Отмена"))
+	);
+
 	//назначаем обработчики
-	btn[0].on('click', sendCB, form);
-	btn[1].on('click', function(){
-			form.reset();
-		});
-	btn[2].on('click', closeCB);	
+//	btn[0].on('click', sendCB, form);
+//	btn[1].on('click', function(){
+//			form.reset();
+//		});
+//	btn[2].on('click', closeCB);	
 	return holder;	
 }
 
@@ -147,12 +154,13 @@ function makePList(title, id, refreshCB, closeCB) {
 function makeList(title, id, toolItems) {
 	//клоним шаблон рамки списка	
 	var plist = $('list-holder-template').clone().set('id',id+'holder');
-	//панель активных элементов
-	plist.first('.handle').insert(
-		ToolItem.composeList(toolItems)
-	)
 	//заголовок
 	plist.first('.title').text(title);
+	//панель активных элементов
+//	plist.first('.handle').insert(
+	plist.first('.title').insert(
+		ToolItem.composeList(toolItems)
+	)
 	//пейджер
 	//возврат
 	return plist; 
