@@ -135,8 +135,8 @@ var Svc = new Class(AO,
 	}
 })
 Svc.sList = [
-			{uuid:"gamma",name:"Собутыльники",descr:"Пьянки, гулянки",domain:"http:172.16.5.83:8080", psid:{}, tokens:[]}
-			,{uuid:"beta", name:"Оптовики",descr:"Оптовые заказы",domain:"http:172.16.5.83:8080", psid:{}, tokens:[]}
+			{uuid:"gamma",name:"Собутыльники",descr:"Пьянки, гулянки",domain:"http://172.16.5.83:8080", psid:{}, tokens:[]}
+			,{uuid:"beta", name:"Оптовики",descr:"Оптовые заказы",domain:"http://172.16.5.83:8080", psid:{}, tokens:[]}
 		];
 
 
