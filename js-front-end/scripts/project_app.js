@@ -1077,11 +1077,12 @@ $('left-block').first('.rui-resizable-content')._.style.height="96%";
 
 
 new Svc(
-	{
-		uuid:"gamma",name:"Собутыльники",descr:"Пьянки, гулянки",domain:"http://172.16.5.83:8080"
-		, psid:{}
-		, tokens:[]
-	}
+//	{
+//		uuid:"gamma",name:"Собутыльники",descr:"Пьянки, гулянки",domain:"http://172.16.5.83:8080"
+		Svc.sList[0]
+//		, psid:{}
+//		, tokens:[]
+//	}
 ).display();
 
 
