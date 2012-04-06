@@ -24,7 +24,7 @@ var LiveData = new Class(Observer, {
 });
 
 LiveData.live = function (ld,delay) {
-	delay = delay || 120000;
+	delay = delay || 60000;
 	ld.getter(function(data, isOk, r){
 		if (isOk) {
 			ld.data = data;
@@ -212,6 +212,7 @@ var Prj = new Class(AO,
 		}
 	}
 	,invitePart: function(values, continuation) { Part.invite(this, values, continuation); }
+	,resPartResListReport: function(continuation) {	Prj.resPartResListReport(this.psid, this.uuid, continuation); }
 });
 
 Prj.create = function (svc, values, continuation) {
@@ -254,6 +255,15 @@ Prj.collectList = function (tokens, list, continuation) {
 			continuation(list, true, "");
 		}
 	};
+
+Prj.resPartResListReport = function(psid, uuid, continuation){
+	apost("/participant/report",
+		{psid:psid, uuid:uuid},
+		function(resp, isOk, r){
+			if (defined(continuation)) {continuation(resp, isOk, r)};
+		}		
+	);	
+}
 
 //Участник
 var Part = new Class(AO,
@@ -527,4 +537,15 @@ Res.includeTo = function(act, values, continuation){
 			if (isOk) {act.resList.act();}
 		}		
 	);
+}
+
+Res.use = function(act, uuid, amount, continuation) {
+	apost("/participant/resource/use",
+		{psid:act.parent.psid, uuid:uuid, activity:act.uuid, amount:amount},
+		function(resp, isOk, r) {
+			if (defined(continuation)) {continuation(resp, isOk, r)};
+//			if (isOk) {act.resList.act();}
+		}		
+	);
+	
 }

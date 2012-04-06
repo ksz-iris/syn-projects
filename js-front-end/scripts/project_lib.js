@@ -368,7 +368,7 @@ function makeRowSet(container, cols, list, options) {
 					} else if (col.popupProvider && (this.get("poped") != "true")) {
 						var popupContent = col.popupProvider;
 						if (isFunction(popupContent)) {
-							popupContent = popupContent(list[this.get('row_id')] ,this.get('row_id'))
+							popupContent = popupContent(list[this.get('row_id')] ,this.get('row_id'),this,evt)
 						}
 						if (popupContent) {
 							var popup = makePopup(popupContent, evt.position(), this);
@@ -390,7 +390,7 @@ function makeRowSet(container, cols, list, options) {
 	container.delegate('mouseover','.cell',function(evt,p1){
 			cols.each(function(col,i){
 				if ((col.name == this.get('col_id')) && col.popupProvider) {
-					popup(col.popupProvider.curry(list[this.get('row_id')] ,this.get('row_id'))
+					popup(col.popupProvider.curry(list[this.get('row_id')] ,this.get('row_id'), this, evt)
 							,evt.position(),this);					
 				}				
 			}.bind(this));
@@ -440,6 +440,7 @@ function makeRow(cols, row, rowId, options) {
 				,row_id:rowId
 				,col_id:col.name
 			}).append($E("span",{class:"cell-text"}).text(row[col.name]));
+			
 			return cell;
 		})
 	));

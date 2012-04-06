@@ -1,7 +1,7 @@
 var projectStatusList = {opened:"Создан",planning:"Планирование",contractor:"Выбор предложения",bubget:"бюджетирование",control:"контроль",closed:"закрыт"};
 var actStatusList = {created:"Формируется",voted:"Предложено",accepted:"Принято",deniing:"Отменяется",denied:"Отменено"};
 var partStatusList = {voted:"Принимается",accepted:"Действующий",denied:"Исключен"};
-var resUseList={personal:"индивидуально",common:"общий"};
+var resUseList={personal:"",common:"общий"};
 
 //Новый проект
 //svc - данные сервиса
@@ -389,7 +389,7 @@ function refreshPartList(list, container, prj){
 	$("participant-me").first(".name").text(me.name);
 	$("participant-me").first(".panel").insert(
 		ToolItem.composeList(
-			[new ToolItem("Изм.", setPartData.curry(prj, me))]
+			[new ToolItem("Изменить", setPartData.curry(prj, me))]
 		)
 	);	
 }
@@ -428,24 +428,7 @@ function refreshActList(list, container, prj) {
 	makeRowSet(container,
 		//Каталог полей
 		[
-			{name:"part"
-				,classList:["button"]
-				,popupProvider:function(rowData, rowId) {
-					var texts = [rowData.descr,"Время:" ,"Участники:", "Используются:"];
-					var toolItems = [];
-					if (!rowData.participant) {
-						toolItems.push(new ToolItem("Участвовать.", Act.participate.curry(prj, "include", rowData.uuid)));
-						texts.push("-------------");	
-						texts.push("Вы еще не являетесь участником");	
-					} else {
-						toolItems.push(new ToolItem("Не участвовать.", Act.participate.curry(prj, "exclude", rowData.uuid)));
-						texts.push("-------------");	
-						texts.push("Вы уже являетесь участником");	
-					}
-					return makeDialog(rowData.name, texts, toolItems);
-				}
-			}
-			,{name:"name"
+			{name:"name"
 				,popupProvider:function(rowData, rowId){
 					return rowData.descr;
 				}
@@ -498,6 +481,22 @@ function refreshActList(list, container, prj) {
 					} else {
 					}					
 				} 
+			},{name:"part"
+//				,classList:["button"]
+				,popupProvider:function(rowData, rowId) {
+					var texts = [rowData.descr,"Время:" ,"Участники:", "Используются:"];
+					var toolItems = [];
+					if (!rowData.participant) {
+						toolItems.push(new ToolItem("Участвовать.", Act.participate.curry(prj, "include", rowData.uuid)));
+						texts.push("-------------");	
+						texts.push("Вы еще не являетесь участником");	
+					} else {
+						toolItems.push(new ToolItem("Не участвовать.", Act.participate.curry(prj, "exclude", rowData.uuid)));
+						texts.push("-------------");	
+						texts.push("Вы уже являетесь участником");	
+					}
+					return makeDialog(rowData.name, texts, toolItems);
+				}
 			},{
 				name:"descr"
 				,popupProvider: function(rowData,i){return rowData.descr;}
@@ -607,11 +606,53 @@ function setProjectStatus(prj, status) {
 	);
 }
 
+function showPrjResReport(prj) {
+	var repWin = window.open('','Смета по ресурсам проекта '+prj.name+" ("+prj.begin_date_d+")"
+		,"resizable=yes,scrolable=yes")
+	prj.resPartResListReport(function(resp, isOk, r){
+		repWin.document.body.innerHTML = 
+		$E("div")
+			.append($E("H3").text(prj.name+" ("+prj.begin_date_d+")"))
+			.append($E("div").text(prj.descr))
+			.append($E("div")
+				.append($E("H4").text("Участники"))
+				.insert(
+					resp.participants.map(function(item, i){
+						return $E("div")
+							.append($E("span",{style:"width:12em;display:inline-block;"}).text(item.name))
+							.append($E("span",{style:"width:32em;display:inline-block;"}).text(item.descr))
+							.append($E("span",{style:"width:10em;display:inline-block;"}).text(item.cost))
+							
+					})
+				)
+			)
+			.append($E("div")
+				.append($E("H4").text("Ресурсы"))
+				.insert(
+					resp.resources.map(function(item, i){
+						return $E("div")
+							.append($E("span",{style:"width:12em;display:inline-block;"}).text(item.name))
+							.append($E("span",{style:"width:22em;display:inline-block;"}).text(item.descr))
+							.append($E("span",{style:"width:12em;display:inline-block;"}).text(item.amount+" "+item.units))
+							.append($E("span",{style:"width:10em;display:inline-block;"}).text(item.cost))
+					})
+				)
+			)
+			.append($E("div")
+				.append($E("div").text("Итого:"+resp.cost))
+			)
+			.html();
+	});
+}
 
 function displayProject(prj){
 //обновление навигации
 	displayNav(prj
-		,[new ToolItem("Новое мероприятие", newActivity.curry(prj, function(){prj.display();}))]
+		,[
+			new ToolItem("Новое мероприятие", newActivity.curry(prj, function(){prj.display();}))
+			,new ToolItem("Новый ресурс", newResource.curry(prj, function(){prj.display();}, function(){prj.display();}))
+			,new ToolItem("Смета", showPrjResReport.curry(prj))
+		]
 	);
 
 	//заголовок, описание проекта
@@ -652,7 +693,7 @@ function displayProject(prj){
 	//формируем действия
 	$E('div').setStyle({width:"100%"}).insertTo($('left-footer')).insert(
 		ToolItem.composeList(
-			[new ToolItem("Пригл.", invitePart.curry(prj))]
+			[new ToolItem("Пригласить", invitePart.curry(prj))]
 		)
 	);
 
@@ -668,7 +709,7 @@ function displayProject(prj){
 	var actList = makeList(
 		"Мероприятия"
 		,"proj-act-list"
-		,[new ToolItem("Нов.", newActivity.curry(prj, function(){prj.display();}))
+		,[new ToolItem("Новое", newActivity.curry(prj, function(){prj.display();}))
 		]
 	).insertTo($("content-container")).show();
 	prj.actList.once('refreshActList', refreshActList.rcurry(actList.first('.content'),prj));
@@ -677,7 +718,7 @@ function displayProject(prj){
 	var resList = makeList(
 		"Ресурсы"
 		,"proj-res-list"
-		,[new ToolItem("Нов.", newResource.curry(prj, function(){prj.display();}, function(){prj.display();}))
+		,[new ToolItem("Новый", newResource.curry(prj, function(){prj.display();}, function(){prj.display();}))
 		]
 	).insertTo($("content-container")).show();
 	prj.resList.once('refreshResList', refreshResList.rcurry(resList.first('.content'),prj));
@@ -774,6 +815,23 @@ function refreshActResList(list, container, act) {
 			name:"name"
 		},{
 			name:"amount_d"
+			,popupProvider:function(rowData, rowId, elt, evt) {
+				if ((rowData.use=="personal")&&(rowData.status == "accepted")) {
+					return [
+						$E("input", {type:"text",}).on("blur", function(){ 
+							Res.use(act, rowData.uuid, this._.value.toFloat(),
+								function(rest, isOk, r, val){
+									if (isOk) {
+										rowData.amount = val;
+										rowData.amount_d = rowData.amount+" "+rowData.units;
+										elt.clean().append($E("span",{class:"cell-text"}).text(rowData.amount_d));
+									}
+								}.rcurry(this._.value.toFloat())
+							);
+						})
+					];
+				}
+			}
 		},{
 			name:"use_d"
 		},{
@@ -853,7 +911,7 @@ function refreshActResList(list, container, act) {
 function displayActivity(act) {
 //обновление 
 	var toolItems = [];
-	if (act.status == "accepted") {toolItems.push(new ToolItem("Новый ресурс", newResource.curry(act, function(){act.display();}, function(){act.display();})))} 
+	if (act.status == "accepted") {toolItems.push(new ToolItem("Новый ресурс", newResource.curry(act.parent, function(){act.display();}, function(){act.display();})))} 
 	if (!act.participant) {
 		toolItems.push(new ToolItem("Участвовать", function() {act.participate(
 			function(resp, isOk, r){ if (isOk) {act.participant = true; act.display();} }
@@ -904,7 +962,7 @@ function displayActivity(act) {
 	var prjResList = makeList(
 		"Доступные на проекте ресурсы"
 		,"prj-res-list"
-		,[new ToolItem("Нов.", newResource.curry(act.parent, function(){act.display();}, function(){act.display();}))]
+		,[new ToolItem("Новый", newResource.curry(act.parent, function(){act.resList.act(); act.display();}, function(){act.display();}))]
 	).insertTo($("content-container")).show();
 	act.resList.once('refreshPrjResList', refreshPrjResList.rcurry(prjResList.first('.content'),act));
 	

@@ -213,6 +213,7 @@ label {
 .row .name{
 	width: 22em;
 	font-weight: bold;
+	text-decoration: underline;
 }
 .row .amount_d{
 	width: 6em;
@@ -228,6 +229,14 @@ label {
 .row .status_d{
 	min-width: 3em;
 	text-decoration: underline;
+}
+.row .part{
+	min-width: 3em;
+	text-decoration: underline;
+}
+
+.row .use_d{
+	min-width: 4em;
 }
 
 
