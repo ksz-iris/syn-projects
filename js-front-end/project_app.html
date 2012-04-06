@@ -266,6 +266,23 @@
 				<input type="hidden" name="user_id"></input>
 			</form>
 		</div>
+
+<!--Шаблон формы изменения данных ресурса-->
+		<div id="edit-res-costs-template" style="display:none">
+			<form method="POST" >
+				<input type="hidden" name="psid"></input>
+				<input type="hidden" name="uuid"></input>
+				<div class="field">
+					<span class="label">Мин цена:</span><input type="text" name="min"></input>
+				</div>
+				<div class="field">
+					<span class="label">Мax цена:</span><input type="text" name="max"></input>
+				</div>
+				<div class="field">
+					<span class="label">Факт цена:</span><input type="text" name="cost"></input>
+				</div>
+			</form>
+		</div>
 	
 </body>
 </html>

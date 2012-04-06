@@ -547,5 +547,14 @@ Res.use = function(act, uuid, amount, continuation) {
 //			if (isOk) {act.resList.act();}
 		}		
 	);
-	
+}
+Res.costChange= function(prj, values, continuation) {
+	apost("/resource/cost/change",
+		values,
+		function(resp, isOk, r) {
+			if (defined(continuation)) {continuation(resp, isOk, r)};
+			if (isOk) {act.resList.act();}
+		}		
+	);
+
 }

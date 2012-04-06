@@ -101,6 +101,7 @@ label {
 .nav-panel {
 	border: thin solid navy;
 	border-radius: 6px;
+	padding: 3px;
 }
 .nav-panel .title {
 	cursor: pointer;
@@ -114,6 +115,8 @@ label {
 
 .tool-panel {
 	border-bottom: thin solid ;
+	padding-bottom: 3px;
+	padding-top: 3px;
 }
 /* поле контента */
 #content-block {
@@ -166,6 +169,7 @@ label {
 
 .list-holder .handle {
 	display: inline;
+	padding: 3px;
 }
 
 .list-holder .pager{
@@ -219,7 +223,7 @@ label {
 	text-decoration: underline;
 }
 .row .amount_d{
-	width: 6em;
+	min-width: 6em;
 }
 .row .date{
 	width: 6em;
@@ -242,6 +246,13 @@ label {
 	min-width: 4em;
 }
 
+.row .cost_d{
+	min-width: 8em;
+}
+
+.row .cost_int_d{
+	min-width: 8em;
+}
 
 .part-list-row .name{
 	width: 10em;

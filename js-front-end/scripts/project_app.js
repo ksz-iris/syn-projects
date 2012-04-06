@@ -575,6 +575,37 @@ function newResource(prj, cbOk, cbCancel){
 		)
 	);
 }
+
+function setResCosts(prj, res){
+	$("content-title").text("Цены ресурса "+res.name );
+	$("content-description").text('заполните поля, бла бла бла');
+
+	//форм формы
+	var fm = makeForm(
+		$('edit-res-costs-template')  //шаблон формы
+		,"edit-res-costs"
+		,"цены ресурса" //заголовок формы
+		//обработка сабмита
+		,function(evt, form){
+			Res.costChange(prj, form.values(),function(resp){
+				prj.display();
+			});
+		} 
+		//обработка закрытияформы
+		,function(){
+			prj.display();
+		}
+	);
+	$('content-container').clean().append(fm);
+	fm = fm.first('form');
+	fm.input("min").setValue(res.min_cost);
+	fm.input("max").setValue(res.max_cost);
+	fm.input("cost").setValue(res.mean_cost);
+	fm.input("uuid").setValue(res.uuid);
+	fm.input("psid").setValue(prj.psid);
+}
+
+ 
 //обновление списка ресурсов
 //container - контейнер элементов,
 //prj - данные проекта
@@ -584,12 +615,22 @@ function refreshResList(list, container, prj) {
 	makeRowSet(container,
 		[{
 			name:"name"
+			,onClick:function(rowData, rowId, elt, evt){ 
+						setResCosts(prj, rowData);
+			}
 		},{
-			name:"amount"
+			name:"cost_int_d"
 		},{
-			name:"units"
+			name:"cost_d"
+//		},{
+//			name:"amount_d"
 		}]
-		,list
+		,list.map(function(res,i){
+//			res.amount_d = res.amount + " " + res.units;
+			res.cost_d = (res.mean_cost || "") + "р./"+res.units;
+			res.cost_int_d = (res.min_cost || "") + "-" + (res.max_cost || "") + " р.";
+			return res;
+		})
 		,{}
 	)
 }	
@@ -612,34 +653,74 @@ function showPrjResReport(prj) {
 	prj.resPartResListReport(function(resp, isOk, r){
 		repWin.document.body.innerHTML = 
 		$E("div")
-			.append($E("H3").text(prj.name+" ("+prj.begin_date_d+")"))
+			.append($E("H1").text(prj.name+" ("+prj.begin_date_d+")"))
 			.append($E("div").text(prj.descr))
 			.append($E("div")
-				.append($E("H4").text("Участники"))
+				.append($E("H2").text("Участники"))
 				.insert(
-					resp.participants.filter(function(item,i){return item.status == "accepted";}).map(function(item, i){
-						return $E("div")
-							.append($E("span",{style:"width:12em;display:inline-block;"}).text(item.name))
-							.append($E("span",{style:"width:32em;display:inline-block;"}).text(item.descr))
-							.append($E("span",{style:"width:10em;display:inline-block;"}).text(item.cost))
-							
-					})
-				)
-			)
-			.append($E("div")
+					resp.participants.filter(function(part,i){return part.status == "accepted";}).map(function(part, i){
+						return [
+							$E("div",{style:"border thin dotted;font-weight:bold;"})
+								.append($E("span",{style:"width:12em;display:inline-block;"}).text(part.name))
+								.append($E("span",{style:"width:22em;display:inline-block;"}).text(part.descr))
+							,
+
+			$E("div", {style:"margin-left:5em;border-bottom: thin double;"})
 				.append($E("H4").text("Ресурсы"))
+				.append($E("div", {style:"border-bottom: thin solid;font-weight:bold;"})
+							.append($E("span",{style:"width:12em;display:inline-block;"}).text("Наименование"))
+							.append($E("span",{style:"width:22em;display:inline-block;"}).text("Описание"))
+							.append($E("span",{style:"width:12em;display:inline-block;"}).text("Цена план"))
+							.append($E("span",{style:"width:10em;display:inline-block;"}).text("Цена фактр."))
+							.append($E("span",{style:"width:12em;display:inline-block;"}).text("количество"))
+							.append($E("span",{style:"width:12em;display:inline-block;"}).text("Стоимость план"))
+							.append($E("span",{style:"width:10em;display:inline-block;"}).text("Стоимость факт"))
+				)
 				.insert(
-					resp.resources.filter(function(item,i){return item.amount > 0;}).map(function(item, i){
-						return $E("div")
+					part.resources.filter(function(item,i){return item.amount > 0;}).map(function(item, i){
+						return $E("div",{style:"border thin dotted"})
 							.append($E("span",{style:"width:12em;display:inline-block;"}).text(item.name))
 							.append($E("span",{style:"width:22em;display:inline-block;"}).text(item.descr))
+							.append($E("span",{style:"width:12em;display:inline-block;"}).text((item.min_cost||"")+"--"+(item.max_cost||"")+"р."))
+							.append($E("span",{style:"width:10em;display:inline-block;"}).text((item.mean_cost||"")+"р."))
 							.append($E("span",{style:"width:12em;display:inline-block;"}).text(item.amount+" "+item.units))
-							.append($E("span",{style:"width:10em;display:inline-block;"}).text(item.cost))
+							.append($E("span",{style:"width:12em;display:inline-block;"}).text((item.sum_min_cost||"")+"--"+(item.sum_max_cost||"")+"р."))
+							.append($E("span",{style:"width:10em;display:inline-block;"}).text((item.sum_mean_cost||"")+"р."))
+					})
+				)
+			
+							
+						];
+					}).flatten()
+				)
+			)
+			.append($E("div")
+				.append($E("H3").text("Ресурсы"))
+				.append($E("div", {style:"border-bottom: thin solid;font-weight:bold;"})
+							.append($E("span",{style:"width:12em;display:inline-block;"}).text("Наименование"))
+							.append($E("span",{style:"width:22em;display:inline-block;"}).text("Описание"))
+							.append($E("span",{style:"width:12em;display:inline-block;"}).text("Цена план"))
+							.append($E("span",{style:"width:10em;display:inline-block;"}).text("Цена фактр."))
+							.append($E("span",{style:"width:12em;display:inline-block;"}).text("количество"))
+							.append($E("span",{style:"width:12em;display:inline-block;"}).text("Стоимость план"))
+							.append($E("span",{style:"width:10em;display:inline-block;"}).text("Стоимость факт"))
+				)
+				.insert(
+					resp.resources.filter(function(item,i){return item.amount > 0;}).map(function(item, i){
+						return $E("div",{style:"border thin dotted"})
+							.append($E("span",{style:"width:12em;display:inline-block;"}).text(item.name))
+							.append($E("span",{style:"width:22em;display:inline-block;"}).text(item.descr))
+							.append($E("span",{style:"width:12em;display:inline-block;"}).text((item.min_cost||"")+"--"+(item.max_cost||"")+"р."))
+							.append($E("span",{style:"width:10em;display:inline-block;"}).text((item.mean_cost||"")+"р."))
+							.append($E("span",{style:"width:12em;display:inline-block;"}).text(item.amount+" "+item.units))
+							.append($E("span",{style:"width:12em;display:inline-block;"}).text((item.sum_min_cost||"")+"--"+(item.sum_max_cost||"")+"р."))
+							.append($E("span",{style:"width:10em;display:inline-block;"}).text((item.sum_mean_cost||"")+"р."))
 					})
 				)
 			)
 			.append($E("div")
-				.append($E("div").text("Итого:"+resp.cost))
+				.append($E("H2").text("Итого по плану проекта:"+(resp.min_cost||"")+"--"+(resp.max_cost||"")+"р."))
+				.append($E("H2").text("Итого по факту:"+(resp.mean_cost||"")+"р."))
 			)
 			.html();
 	});
