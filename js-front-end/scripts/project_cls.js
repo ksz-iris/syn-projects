@@ -24,7 +24,7 @@ var LiveData = new Class(Observer, {
 });
 
 LiveData.live = function (ld,delay) {
-	delay = delay || 60000;
+	delay = delay || 20000;
 	ld.getter(function(data, isOk, r){
 		if (isOk) {
 			ld.data = data;
