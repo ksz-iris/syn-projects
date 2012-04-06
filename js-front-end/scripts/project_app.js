@@ -617,7 +617,7 @@ function showPrjResReport(prj) {
 			.append($E("div")
 				.append($E("H4").text("Участники"))
 				.insert(
-					resp.participants.map(function(item, i){
+					resp.participants.filter(function(item,i){return item.status == "accepted";}).map(function(item, i){
 						return $E("div")
 							.append($E("span",{style:"width:12em;display:inline-block;"}).text(item.name))
 							.append($E("span",{style:"width:32em;display:inline-block;"}).text(item.descr))
@@ -629,7 +629,7 @@ function showPrjResReport(prj) {
 			.append($E("div")
 				.append($E("H4").text("Ресурсы"))
 				.insert(
-					resp.resources.map(function(item, i){
+					resp.resources.filter(function(item,i){return item.amount > 0;}).map(function(item, i){
 						return $E("div")
 							.append($E("span",{style:"width:12em;display:inline-block;"}).text(item.name))
 							.append($E("span",{style:"width:22em;display:inline-block;"}).text(item.descr))
@@ -878,7 +878,7 @@ function refreshActResList(list, container, act) {
 		},{
 			name:"descr"
 		}]
-		,list.map(function(rowData, i){
+		,list.filter(function(item,i){return item.status != "denied"}).map(function(rowData, i){
 			rowData.use_d = resUseList[rowData.use];
 			rowData.amount_d = rowData.amount+" "+rowData.units;
 			if ((rowData.status == "accepted") && (rowData.votes.length > 0) || (rowData.status == "voted")) {rowData.status_d = "????"; }
@@ -911,7 +911,16 @@ function refreshActResList(list, container, act) {
 function displayActivity(act) {
 //обновление 
 	var toolItems = [];
-	if (act.status == "accepted") {toolItems.push(new ToolItem("Новый ресурс", newResource.curry(act.parent, function(){act.display();}, function(){act.display();})))} 
+	if (act.status == "accepted") {toolItems.push(new ToolItem(
+		"Новый ресурс", newResource.curry(
+			act.parent
+			, function(){
+				act.parent.resList.act(); 
+				act.display();
+			}
+			, function(){act.display();}
+		)
+	))} 
 	if (!act.participant) {
 		toolItems.push(new ToolItem("Участвовать", function() {act.participate(
 			function(resp, isOk, r){ if (isOk) {act.participant = true; act.display();} }
@@ -962,7 +971,10 @@ function displayActivity(act) {
 	var prjResList = makeList(
 		"Доступные на проекте ресурсы"
 		,"prj-res-list"
-		,[new ToolItem("Новый", newResource.curry(act.parent, function(){act.resList.act(); act.display();}, function(){act.display();}))]
+		,[new ToolItem("Новый", newResource.curry(act.parent, function(){
+								act.parent.resList.act(); 
+								act.display();
+							}, function(){act.display();}))]
 	).insertTo($("content-container")).show();
 	act.resList.once('refreshPrjResList', refreshPrjResList.rcurry(prjResList.first('.content'),act));
 	
